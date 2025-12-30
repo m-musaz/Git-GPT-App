@@ -1,0 +1,39 @@
+{
+  "name": "chatgpt-reservations-manager",
+  "version": "1.0.0",
+  "description": "A ChatGPT app for managing Google Calendar pending invitations using MCP",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client",
+    "widget"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:widget": "npm run dev --workspace=widget",
+    "build": "npm run build:widget && npm run build:client && npm run build:server",
+    "build:server": "npm run build --workspace=server",
+    "build:client": "npm run build --workspace=client",
+    "build:widget": "npm run build --workspace=widget",
+    "start": "npm run start --workspace=server",
+    "clean": "rm -rf node_modules server/node_modules client/node_modules widget/node_modules server/dist client/dist widget/dist"
+  },
+  "keywords": [
+    "chatgpt",
+    "mcp",
+    "google-calendar",
+    "openai",
+    "apps-sdk"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
