@@ -38,12 +38,13 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
       return;
     }
     
-    // Check if auth is required (from get_pending_reservations when not authenticated)
+    // Check if auth is required (from get_pending_reservations or get_github_profile when not authenticated)
     if ('authRequired' in data && data.authRequired === true) {
-      console.log('[Widget] Detected authRequired, showing auth view');
-      setAuthData({ 
-        authenticated: false, 
-        authUrl: data.authUrl as string | undefined 
+      console.log('[Widget] Detected authRequired, authType:', data.authType, 'showing auth view');
+      setAuthData({
+        authenticated: false,
+        authType: (data.authType as 'calendar' | 'github') || 'calendar',
+        authUrl: data.authUrl as string | undefined
       });
       setInitialRouteSet(true);
       return;
@@ -66,17 +67,21 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
   const initialAuthData: AuthStatusOutput | null = (() => {
     if (!initialData) return authData;
     const data = initialData as Record<string, unknown>;
-    
-    // Handle authRequired from get_pending_reservations
+
+    // Handle authRequired from get_pending_reservations or get_github_profile
     if ('authRequired' in data && data.authRequired === true) {
-      return { authenticated: false, authUrl: data.authUrl as string | undefined };
+      return {
+        authenticated: false,
+        authType: (data.authType as 'calendar' | 'github') || 'calendar',
+        authUrl: data.authUrl as string | undefined
+      };
     }
-    
+
     // Handle regular auth data
     if ('authenticated' in data) {
       return initialData as AuthStatusOutput;
     }
-    
+
     return authData;
   })();
 

@@ -301,7 +301,7 @@ function getTools(): AppsTool[] {
     {
       name: 'get_github_profile',
       title: 'Get GitHub Profile',
-      description: 'Get the current user\'s GitHub profile information. This tool is safe to call at any time - it will check if the user is authenticated first and prompt for GitHub authentication if needed before accessing any profile data. Use this when the user asks about their GitHub profile, wants to connect their GitHub account, or asks anything related to their GitHub.',
+      description: 'Get the current user\'s own GitHub profile. This tool takes NO parameters - just call it directly. It will automatically check if the user has connected their GitHub account and prompt for authentication if needed. Do NOT ask the user for a username - this tool fetches THEIR OWN profile after they authenticate with GitHub OAuth.',
       inputSchema: {
         type: 'object',
         properties: {},
