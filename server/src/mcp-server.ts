@@ -301,7 +301,7 @@ function getTools(): AppsTool[] {
     {
       name: 'get_github_profile',
       title: 'Get GitHub Profile',
-      description: 'Get the authenticated GitHub user profile. If not authenticated, prompts the user to connect their GitHub account first.',
+      description: 'Get the current user\'s GitHub profile information. This tool is safe to call at any time - it will check if the user is authenticated first and prompt for GitHub authentication if needed before accessing any profile data. Use this when the user asks about their GitHub profile, wants to connect their GitHub account, or asks anything related to their GitHub.',
       inputSchema: {
         type: 'object',
         properties: {},
@@ -321,6 +321,7 @@ function getTools(): AppsTool[] {
       _meta: {
         'openai/visibility': 'public',
         'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+        'openai/widgetAccessible': true,
       },
     },
   ];
