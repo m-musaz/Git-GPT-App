@@ -17,6 +17,18 @@ export interface PendingInvite {
   calendarLink: string;
 }
 
+// Auth type identifier
+export type AuthType = 'calendar' | 'github';
+
+// GitHub user type
+export interface GitHubUser {
+  id: number;
+  login: string;
+  name?: string;
+  email?: string;
+  avatar_url: string;
+}
+
 // Tool output types
 export interface PendingInvitesOutput {
   invites?: PendingInvite[];
@@ -25,12 +37,15 @@ export interface PendingInvitesOutput {
     end: string;
   };
   authRequired?: boolean;
+  authType?: AuthType;
   authUrl?: string;
   error?: string;
 }
 
 export interface AuthStatusOutput {
   authenticated: boolean;
+  authType?: AuthType;
   email?: string | null;
   authUrl?: string;
+  user?: GitHubUser; // For GitHub auth
 }

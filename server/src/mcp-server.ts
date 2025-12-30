@@ -298,6 +298,31 @@ function getTools(): AppsTool[] {
         'openai/widgetAccessible': true,
       },
     },
+    {
+      name: 'get_github_profile',
+      title: 'Get GitHub Profile',
+      description: 'Get the authenticated GitHub user profile. If not authenticated, prompts the user to connect their GitHub account first.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+      annotations: {
+        title: 'Get GitHub Profile',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      securitySchemes: [
+        { type: 'noauth' },
+      ],
+      _meta: {
+        'openai/visibility': 'public',
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+      },
+    },
   ];
 }
 
@@ -325,6 +350,7 @@ async function handleGetPendingReservations(
       content: [{ type: 'text', text: 'User needs to authenticate with Google Calendar.' }],
       structuredContent: {
         authRequired: true,
+        authType: 'calendar',
         authUrl,
       },
       _meta: {
@@ -527,12 +553,13 @@ async function handleBatchRespondToInvites(
  */
 function handleCheckAuthStatus(userId: string): AppsToolResponse {
   const authenticated = isAuthenticated(userId);
-  
+
   if (authenticated) {
     return {
       content: [{ type: 'text', text: 'User is connected to Google Calendar.' }],
       structuredContent: {
         authenticated: true,
+        authType: 'calendar',
         email: getUserEmail(userId),
       },
       _meta: {
@@ -546,6 +573,7 @@ function handleCheckAuthStatus(userId: string): AppsToolResponse {
       content: [{ type: 'text', text: 'User needs to connect Google Calendar.' }],
       structuredContent: {
         authenticated: false,
+        authType: 'calendar',
         authUrl,
       },
       _meta: {
@@ -572,6 +600,7 @@ function handleCheckGitHubAuthStatus(userId: string): AppsToolResponse {
       content: [{ type: 'text', text: `User is connected to GitHub as @${user?.login}.` }],
       structuredContent: {
         authenticated: true,
+        authType: 'github',
         user,
       },
       isError: false,
@@ -582,11 +611,49 @@ function handleCheckGitHubAuthStatus(userId: string): AppsToolResponse {
       content: [{ type: 'text', text: 'User needs to connect GitHub.' }],
       structuredContent: {
         authenticated: false,
+        authType: 'github',
         authUrl,
       },
       isError: false,
     };
   }
+}
+
+/**
+ * Handle get_github_profile tool (PUBLIC - like get_pending_reservations for Calendar)
+ */
+function handleGetGitHubProfile(userId: string): AppsToolResponse {
+  const authenticated = isGitHubAuthenticated(userId);
+
+  if (!authenticated) {
+    const authUrl = getGitHubAuthUrl(userId);
+    return {
+      content: [{ type: 'text', text: 'User needs to connect their GitHub account.' }],
+      structuredContent: {
+        authRequired: true,
+        authType: 'github',
+        authUrl,
+      },
+      _meta: {
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+      },
+      isError: false,
+    };
+  }
+
+  const user = getGitHubUser(userId);
+  return {
+    content: [{ type: 'text', text: `GitHub profile: @${user?.login}` }],
+    structuredContent: {
+      authenticated: true,
+      authType: 'github',
+      user,
+    },
+    _meta: {
+      'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+    },
+    isError: false,
+  };
 }
 
 /**
@@ -667,6 +734,9 @@ export function createMCPServer(): Server {
       // GitHub Tools (Auth only)
       case 'check_github_auth_status':
         return handleCheckGitHubAuthStatus(userId) as unknown as CallToolResult;
+
+      case 'get_github_profile':
+        return handleGetGitHubProfile(userId) as unknown as CallToolResult;
 
       default:
         return {
@@ -838,6 +908,9 @@ export async function handleMCPRequest(
         // GitHub Tools (Auth only)
         case 'check_github_auth_status':
           return handleCheckGitHubAuthStatus(toolUserId);
+
+        case 'get_github_profile':
+          return handleGetGitHubProfile(toolUserId);
 
         default:
           return {
