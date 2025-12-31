@@ -93,7 +93,7 @@ export function AuthView({ initialAuthData }: AuthViewProps) {
 
   const handleConnect = () => {
     if (currentAuth?.authUrl) {
-      openExternal({ href: currentAuth.authUrl });
+      openExternal(currentAuth.authUrl);
       setIsPolling(true);
     }
   };
