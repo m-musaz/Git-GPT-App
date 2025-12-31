@@ -51,6 +51,54 @@ export interface GitHubAuthStatus {
   authUrl?: string;
 }
 
+// GitHub Pull Request Types
+export interface GitHubPullRequest {
+  id: number;
+  number: number;
+  title: string;
+  state: 'open' | 'closed';
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  merged_at?: string | null;
+  draft: boolean;
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  repository: {
+    full_name: string;
+    html_url: string;
+  };
+  labels: Array<{
+    name: string;
+    color: string;
+  }>;
+  requested_reviewers?: Array<{
+    login: string;
+  }>;
+  requested_teams?: Array<{
+    name: string;
+    slug: string;
+  }>;
+}
+
+export interface GitHubTeam {
+  id: number;
+  name: string;
+  slug: string;
+  organization: {
+    login: string;
+  };
+}
+
+export interface ListPullRequestsResult {
+  pullRequests: GitHubPullRequest[];
+  searchType: 'authored' | 'reviewing' | 'involved' | 'user_authored';
+  searchedUser?: string;
+  totalCount: number;
+}
+
 // Calendar Event Types
 export interface CalendarAttendee {
   email: string;

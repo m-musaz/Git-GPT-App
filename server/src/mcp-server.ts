@@ -18,6 +18,7 @@ import {
   getGitHubAuthUrl,
   getGitHubUser,
 } from './github-auth.js';
+import { listPullRequests } from './github-api.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -299,6 +300,45 @@ function getTools(): AppsTool[] {
         'openai/widgetAccessible': true,
       },
     },
+    {
+      name: 'list_pull_requests',
+      title: 'List Pull Requests',
+      description: `List the 10 most recent open pull requests from GitHub.
+
+**Default behavior (no username provided):**
+1. First shows PRs where YOU are the author
+2. If no authored PRs, shows PRs where you are a reviewer (including team-based reviews)
+3. If no review requests, shows PRs where you are involved (mentioned, commented, etc.)
+
+**To see another user's PRs:** Provide their GitHub username (e.g., "Show me Inaam's PRs" → username: "Inaam")
+
+The tool requires GitHub authentication - it will prompt to connect if needed.`,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          username: {
+            type: 'string',
+            description: 'Optional: GitHub username to filter PRs by author. If not provided, shows your own PRs using the priority cascade (authored → reviewing → involved).',
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      annotations: {
+        title: 'List Pull Requests',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      securitySchemes: [
+        { type: 'oauth2', scopes: ['read:user', 'read:org'] },
+      ],
+      _meta: {
+        'openai/visibility': 'public',
+        'openai/widgetAccessible': false,
+      },
+    },
   ];
 }
 
@@ -565,6 +605,88 @@ function handleCheckAuthStatus(userId: string): AppsToolResponse {
 // ============================================
 
 /**
+ * Handle list_pull_requests tool
+ */
+async function handleListPullRequests(
+  args: { username?: string },
+  userId: string
+): Promise<AppsToolResponse> {
+  // Check authentication first
+  if (!isGitHubAuthenticated(userId)) {
+    const authUrl = getGitHubAuthUrl(userId);
+    return {
+      content: [{ type: 'text', text: 'User needs to connect their GitHub account first.' }],
+      structuredContent: {
+        authRequired: true,
+        authType: 'github',
+        authUrl,
+      },
+      _meta: {
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+      },
+      isError: false,
+    };
+  }
+
+  try {
+    const result = await listPullRequests(userId, args.username);
+
+    // Build human-readable message based on search type
+    let message: string;
+    switch (result.searchType) {
+      case 'authored':
+        message = result.totalCount > 0
+          ? `Found ${result.totalCount} open PR${result.totalCount !== 1 ? 's' : ''} that you authored.`
+          : 'You have no open PRs.';
+        break;
+      case 'reviewing':
+        message = result.totalCount > 0
+          ? `Found ${result.totalCount} PR${result.totalCount !== 1 ? 's' : ''} waiting for your review.`
+          : 'No PRs waiting for your review.';
+        break;
+      case 'involved':
+        message = result.totalCount > 0
+          ? `Found ${result.totalCount} PR${result.totalCount !== 1 ? 's' : ''} you're involved in.`
+          : 'No PRs found where you are involved.';
+        break;
+      case 'user_authored':
+        message = result.totalCount > 0
+          ? `Found ${result.totalCount} open PR${result.totalCount !== 1 ? 's' : ''} by ${result.searchedUser}.`
+          : `No open PRs found by ${result.searchedUser}.`;
+        break;
+      default:
+        message = `Found ${result.totalCount} pull request${result.totalCount !== 1 ? 's' : ''}.`;
+    }
+
+    // Format PR list for text output
+    const prList = result.pullRequests.map((pr, i) => {
+      const status = pr.draft ? '📝 Draft' : pr.state === 'open' ? '🟢 Open' : '🔴 Closed';
+      return `${i + 1}. ${status} #${pr.number} "${pr.title}" by @${pr.user.login} in ${pr.repository.full_name}`;
+    }).join('\n');
+
+    return {
+      content: [{
+        type: 'text',
+        text: message + (result.totalCount > 0 ? `\n\n${prList}` : ''),
+      }],
+      structuredContent: {
+        pullRequests: result.pullRequests,
+        searchType: result.searchType,
+        searchedUser: result.searchedUser,
+        totalCount: result.totalCount,
+      },
+      isError: false,
+    };
+  } catch (error: any) {
+    return {
+      content: [{ type: 'text', text: `Error fetching pull requests: ${error.message}` }],
+      structuredContent: { error: error.message },
+      isError: true,
+    };
+  }
+}
+
+/**
  * Handle check_github_auth_status tool (now PUBLIC)
  */
 function handleCheckGitHubAuthStatus(userId: string): AppsToolResponse {
@@ -676,9 +798,15 @@ export function createMCPServer(): Server {
       case 'check_auth_status':
         return handleCheckAuthStatus(userId) as unknown as CallToolResult;
 
-      // GitHub Tools (Auth only)
+      // GitHub Tools
       case 'check_github_auth_status':
         return handleCheckGitHubAuthStatus(userId) as unknown as CallToolResult;
+
+      case 'list_pull_requests':
+        return await handleListPullRequests(
+          args as { username?: string },
+          userId
+        ) as unknown as CallToolResult;
 
       default:
         return {
@@ -850,6 +978,12 @@ export async function handleMCPRequest(
         // GitHub Tools (Auth only)
         case 'check_github_auth_status':
           return handleCheckGitHubAuthStatus(toolUserId);
+
+        case 'list_pull_requests':
+          return await handleListPullRequests(
+            args as { username?: string },
+            toolUserId
+          );
 
         default:
           return {
