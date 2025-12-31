@@ -1,9 +1,13 @@
-import { GitHubPullRequest, GitHubTeam, ListPullRequestsResult } from './types.js';
-import { getGitHubTokens } from './token-store.js';
+import {
+  GitHubPullRequest,
+  GitHubTeam,
+  ListPullRequestsResult,
+} from "./types.js";
+import { getGitHubTokens } from "./token-store.js";
 
-const GITHUB_API_BASE = 'https://api.github.com';
+const GITHUB_API_BASE = "https://api.github.com";
 const MAX_RESULTS = 10;
-
+// testting
 /**
  * Make an authenticated GitHub API request
  */
@@ -15,16 +19,18 @@ async function githubRequest<T>(
   const response = await fetch(`${GITHUB_API_BASE}${endpoint}`, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'Git-GPT-App',
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": "Git-GPT-App",
       ...options.headers,
     },
   });
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`GitHub API error: ${response.status} ${response.statusText} - ${error}`);
+    throw new Error(
+      `GitHub API error: ${response.status} ${response.statusText} - ${error}`
+    );
   }
 
   return response.json() as Promise<T>;
@@ -71,13 +77,13 @@ async function searchPullRequests(
     result.items.map(async (item) => {
       // Extract repo info from repository_url
       const repoMatch = item.repository_url.match(/repos\/(.+)$/);
-      const repoFullName = repoMatch ? repoMatch[1] : 'unknown/unknown';
+      const repoFullName = repoMatch ? repoMatch[1] : "unknown/unknown";
 
       return {
         id: item.id,
         number: item.number,
         title: item.title,
-        state: item.state as 'open' | 'closed',
+        state: item.state as "open" | "closed",
         html_url: item.html_url,
         created_at: item.created_at,
         updated_at: item.updated_at,
@@ -91,7 +97,7 @@ async function searchPullRequests(
           full_name: repoFullName,
           html_url: `https://github.com/${repoFullName}`,
         },
-        labels: item.labels.map(l => ({ name: l.name, color: l.color })),
+        labels: item.labels.map((l) => ({ name: l.name, color: l.color })),
       };
     })
   );
@@ -104,16 +110,18 @@ async function searchPullRequests(
  */
 async function getUserTeams(accessToken: string): Promise<GitHubTeam[]> {
   try {
-    const teams = await githubRequest<Array<{
-      id: number;
-      name: string;
-      slug: string;
-      organization: {
-        login: string;
-      };
-    }>>(accessToken, '/user/teams');
+    const teams = await githubRequest<
+      Array<{
+        id: number;
+        name: string;
+        slug: string;
+        organization: {
+          login: string;
+        };
+      }>
+    >(accessToken, "/user/teams");
 
-    return teams.map(t => ({
+    return teams.map((t) => ({
       id: t.id,
       name: t.name,
       slug: t.slug,
@@ -122,7 +130,7 @@ async function getUserTeams(accessToken: string): Promise<GitHubTeam[]> {
       },
     }));
   } catch (error) {
-    console.error('Error fetching user teams:', error);
+    console.error("Error fetching user teams:", error);
     return [];
   }
 }
@@ -131,7 +139,7 @@ async function getUserTeams(accessToken: string): Promise<GitHubTeam[]> {
  * Get the authenticated user's login
  */
 async function getAuthenticatedUserLogin(accessToken: string): Promise<string> {
-  const user = await githubRequest<{ login: string }>(accessToken, '/user');
+  const user = await githubRequest<{ login: string }>(accessToken, "/user");
   return user.login;
 }
 
@@ -150,18 +158,22 @@ export async function listPullRequests(
   const storedData = getGitHubTokens(userId);
 
   if (!storedData?.tokens?.access_token) {
-    throw new Error('Not authenticated with GitHub');
+    throw new Error("Not authenticated with GitHub");
   }
 
   const accessToken = storedData.tokens.access_token;
-  const myUsername = storedData.user?.login || await getAuthenticatedUserLogin(accessToken);
+  const myUsername =
+    storedData.user?.login || (await getAuthenticatedUserLogin(accessToken));
 
   // If a specific user is provided, search for their authored PRs
   if (specifiedUser) {
-    const prs = await searchPullRequests(accessToken, `author:${specifiedUser} is:open`);
+    const prs = await searchPullRequests(
+      accessToken,
+      `author:${specifiedUser} is:open`
+    );
     return {
       pullRequests: prs,
-      searchType: 'user_authored',
+      searchType: "user_authored",
       searchedUser: specifiedUser,
       totalCount: prs.length,
     };
@@ -169,13 +181,16 @@ export async function listPullRequests(
 
   // Priority 1: PRs where I am the author
   console.log(`Searching for open PRs authored by ${myUsername}...`);
-  const authoredPRs = await searchPullRequests(accessToken, `author:${myUsername} is:open`);
+  const authoredPRs = await searchPullRequests(
+    accessToken,
+    `author:${myUsername} is:open`
+  );
 
   if (authoredPRs.length > 0) {
     console.log(`Found ${authoredPRs.length} authored PRs`);
     return {
       pullRequests: authoredPRs,
-      searchType: 'authored',
+      searchType: "authored",
       totalCount: authoredPRs.length,
     };
   }
@@ -184,7 +199,10 @@ export async function listPullRequests(
   console.log(`No authored PRs found. Searching for review requests...`);
 
   // Direct review requests
-  let reviewingPRs = await searchPullRequests(accessToken, `review-requested:${myUsername} is:open`);
+  let reviewingPRs = await searchPullRequests(
+    accessToken,
+    `review-requested:${myUsername} is:open`
+  );
 
   // Team-based review requests
   const teams = await getUserTeams(accessToken);
@@ -197,33 +215,39 @@ export async function listPullRequests(
 
     // Merge team PRs, avoiding duplicates
     for (const pr of teamPRs) {
-      if (!reviewingPRs.find(existing => existing.id === pr.id)) {
+      if (!reviewingPRs.find((existing) => existing.id === pr.id)) {
         reviewingPRs.push(pr);
       }
     }
   }
 
   // Sort by updated_at and limit to MAX_RESULTS
-  reviewingPRs.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  reviewingPRs.sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  );
   reviewingPRs = reviewingPRs.slice(0, MAX_RESULTS);
 
   if (reviewingPRs.length > 0) {
     console.log(`Found ${reviewingPRs.length} PRs to review`);
     return {
       pullRequests: reviewingPRs,
-      searchType: 'reviewing',
+      searchType: "reviewing",
       totalCount: reviewingPRs.length,
     };
   }
 
   // Priority 3: PRs where I am involved (mentioned, commented, etc.)
   console.log(`No review requests found. Searching for involved PRs...`);
-  const involvedPRs = await searchPullRequests(accessToken, `involves:${myUsername} is:open`);
+  const involvedPRs = await searchPullRequests(
+    accessToken,
+    `involves:${myUsername} is:open`
+  );
 
   console.log(`Found ${involvedPRs.length} involved PRs`);
   return {
     pullRequests: involvedPRs,
-    searchType: 'involved',
+    searchType: "involved",
     totalCount: involvedPRs.length,
   };
 }
