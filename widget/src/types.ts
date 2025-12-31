@@ -49,3 +49,41 @@ export interface AuthStatusOutput {
   authUrl?: string;
   user?: GitHubUser; // For GitHub auth
 }
+
+// GitHub Pull Request types
+export interface GitHubPullRequest {
+  id: number;
+  number: number;
+  title: string;
+  state: 'open' | 'closed';
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  merged_at?: string | null;
+  draft: boolean;
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  repository: {
+    full_name: string;
+    html_url: string;
+  };
+  labels: Array<{
+    name: string;
+    color: string;
+  }>;
+}
+
+export type PRSearchType = 'authored' | 'reviewing' | 'involved' | 'user_authored';
+
+export interface PullRequestsOutput {
+  pullRequests?: GitHubPullRequest[];
+  searchType?: PRSearchType;
+  searchedUser?: string;
+  totalCount?: number;
+  authRequired?: boolean;
+  authType?: AuthType;
+  authUrl?: string;
+  error?: string;
+}

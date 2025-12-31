@@ -3,8 +3,9 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-ro
 import { useOpenAI } from './useOpenAI';
 import { WidgetContext, useWidget, type WidgetContextType } from './WidgetContext';
 import { AuthView, InvitesView } from './components';
+import { PRsView } from './components/PRsView';
 import { theme } from './theme';
-import type { AuthStatusOutput, PendingInvitesOutput } from './types';
+import type { AuthStatusOutput, PendingInvitesOutput, PullRequestsOutput } from './types';
 import './main.css';
 
 // ============================================
@@ -13,9 +14,9 @@ import './main.css';
 function WidgetRouter({ initialData }: { initialData: unknown }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setAuthData, setInvitesData, authData } = useWidget();
+  const { setAuthData, setInvitesData, setPrsData, authData } = useWidget();
   const [initialRouteSet, setInitialRouteSet] = useState(false);
-  
+
   useEffect(() => {
     console.log('[Widget] Route changed to:', location.pathname);
   }, [location.pathname]);
@@ -23,10 +24,21 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
   // Auto-detect data type and route accordingly on initial load
   useEffect(() => {
     if (initialRouteSet || !initialData) return;
-    
+
     const data = initialData as Record<string, unknown>;
     console.log('[Widget] Auto-detecting data type:', Object.keys(data));
-    
+
+    // Check if it's PRs data (has 'pullRequests' array)
+    if ('pullRequests' in data && Array.isArray(data.pullRequests)) {
+      console.log('[Widget] Detected PRs data, navigating to /prs');
+      setPrsData(data as unknown as PullRequestsOutput);
+      // Also mark as authenticated since we could fetch PRs
+      setAuthData({ authenticated: true, authType: 'github' });
+      navigate('/prs', { replace: true });
+      setInitialRouteSet(true);
+      return;
+    }
+
     // Check if it's invites data (has 'invites' array)
     if ('invites' in data && Array.isArray(data.invites)) {
       console.log('[Widget] Detected invites data, navigating to /invites');
@@ -37,7 +49,7 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
       setInitialRouteSet(true);
       return;
     }
-    
+
     // Check if auth is required (from get_pending_reservations or get_github_profile when not authenticated)
     if ('authRequired' in data && data.authRequired === true) {
       console.log('[Widget] Detected authRequired, authType:', data.authType, 'showing auth view');
@@ -49,7 +61,7 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
       setInitialRouteSet(true);
       return;
     }
-    
+
     // Check if it's auth data (has 'authenticated')
     if ('authenticated' in data) {
       console.log('[Widget] Detected auth data, authType:', data.authType, 'staying on /');
@@ -63,11 +75,11 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
       setInitialRouteSet(true);
       return;
     }
-    
+
     // Unknown data type, stay on current route
     console.log('[Widget] Unknown data type, staying on current route');
     setInitialRouteSet(true);
-  }, [initialData, initialRouteSet, navigate, setAuthData, setInvitesData]);
+  }, [initialData, initialRouteSet, navigate, setAuthData, setInvitesData, setPrsData]);
 
   // Derive initial auth data for AuthView
   const initialAuthData: AuthStatusOutput | null = (() => {
@@ -101,6 +113,7 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
     <Routes>
       <Route path="/" element={<AuthView initialAuthData={initialAuthData} />} />
       <Route path="/invites" element={<InvitesView />} />
+      <Route path="/prs" element={<PRsView />} />
     </Routes>
   );
 }
@@ -108,39 +121,49 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
 export default function CalendarWidget() {
   const { data, theme: appTheme, isLoading, error, callTool, openExternal, notifyHeight, setWidgetState, openai } = useOpenAI<AuthStatusOutput>();
   const isDark = appTheme === 'dark';
-  
+
   const [authData, setAuthData] = useState<AuthStatusOutput | null>(null);
   const [invitesData, setInvitesData] = useState<PendingInvitesOutput | null>(null);
+  const [prsData, setPrsData] = useState<PullRequestsOutput | null>(null);
 
   // Only restore from widgetState if there's no fresh data from the tool call
   useEffect(() => {
     // If we have fresh data from the tool call, don't load from cache
     if (data) return;
-    
-    const state = openai?.widgetState as { 
+
+    const state = openai?.widgetState as {
       authenticated?: boolean;
       email?: string;
       view?: string;
       invites?: PendingInvitesOutput;
+      prs?: PullRequestsOutput;
     } | null;
-    
+
     if (state?.authenticated) {
       setAuthData({ authenticated: true, email: state.email || undefined });
     }
     if (state?.invites) setInvitesData(state.invites);
+    if (state?.prs) setPrsData(state.prs);
   }, [openai?.widgetState, data]);
+
+  // Wrapper for openExternal that accepts string URL
+  const handleOpenExternal = (url: string) => {
+    openExternal({ href: url });
+  };
 
   const contextValue: WidgetContextType = {
     theme: appTheme,
     isDark,
     callTool,
-    openExternal,
+    openExternal: handleOpenExternal,
     notifyHeight,
     setWidgetState,
     authData,
     setAuthData,
     invitesData,
     setInvitesData,
+    prsData,
+    setPrsData,
   };
 
   if (isLoading) {

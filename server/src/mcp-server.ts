@@ -312,6 +312,14 @@ function getTools(): AppsTool[] {
 
 **To see another user's PRs:** Provide their GitHub username (e.g., "Show me Inaam's PRs" → username: "Inaam")
 
+**IMPORTANT - This tool ONLY lists PRs. It CANNOT:**
+- Show PR details, files changed, commits, or diffs
+- Filter by merged/closed state (only shows open PRs)
+- Summarize what a PR does
+- Show code changes
+
+Do NOT suggest these features to the user. Only offer to list PRs.
+
 The tool requires GitHub authentication - it will prompt to connect if needed.`,
       inputSchema: {
         type: 'object',
@@ -335,8 +343,9 @@ The tool requires GitHub authentication - it will prompt to connect if needed.`,
         { type: 'oauth2', scopes: ['read:user', 'read:org'] },
       ],
       _meta: {
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
         'openai/visibility': 'public',
-        'openai/widgetAccessible': false,
+        'openai/widgetAccessible': true,
       },
     },
   ];
@@ -674,6 +683,9 @@ async function handleListPullRequests(
         searchType: result.searchType,
         searchedUser: result.searchedUser,
         totalCount: result.totalCount,
+      },
+      _meta: {
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
       },
       isError: false,
     };

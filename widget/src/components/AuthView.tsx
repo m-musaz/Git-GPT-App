@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@openai/apps-sdk-ui/components/Badge';
 import { Check } from '@openai/apps-sdk-ui/components/Icon';
 import { useWidget } from '../WidgetContext';
 import { theme } from '../theme';
-import type { AuthStatusOutput, AuthType } from '../types';
+import type { AuthStatusOutput, AuthType, PullRequestsOutput } from '../types';
 
 // GitHub Icon Component
 function GitHubIcon({ className }: { className?: string }) {
@@ -28,8 +29,10 @@ interface AuthViewProps {
 }
 
 export function AuthView({ initialAuthData }: AuthViewProps) {
-  const { isDark, callTool, openExternal, setWidgetState, notifyHeight, authData, setAuthData } = useWidget();
+  const { isDark, callTool, openExternal, setWidgetState, notifyHeight, authData, setAuthData, setPrsData } = useWidget();
+  const navigate = useNavigate();
   const [isPolling, setIsPolling] = useState(false);
+  const [isLoadingPRs, setIsLoadingPRs] = useState(false);
 
   const currentAuth = authData || initialAuthData;
   const isAuthenticated = currentAuth?.authenticated ?? false;
@@ -38,7 +41,24 @@ export function AuthView({ initialAuthData }: AuthViewProps) {
   const authType: AuthType = currentAuth?.authType || 'calendar';
   const isGitHub = authType === 'github';
 
-  useEffect(() => { notifyHeight(); }, [isAuthenticated, isPolling, notifyHeight]);
+  useEffect(() => { notifyHeight(); }, [isAuthenticated, isPolling, isLoadingPRs, notifyHeight]);
+
+  // Handler to list PRs
+  const handleListPRs = async () => {
+    setIsLoadingPRs(true);
+    try {
+      const result = await callTool('list_pull_requests', {}) as { structuredContent?: PullRequestsOutput };
+      if (result?.structuredContent) {
+        setPrsData(result.structuredContent);
+        setWidgetState({ view: 'prs', prs: result.structuredContent });
+        navigate('/prs');
+      }
+    } catch (err) {
+      console.error('[Widget] Failed to fetch PRs:', err);
+    } finally {
+      setIsLoadingPRs(false);
+    }
+  };
 
   // Polling for auth status - uses different tool based on auth type
   useEffect(() => {
@@ -140,6 +160,29 @@ export function AuthView({ initialAuthData }: AuthViewProps) {
               </p>
             </div>
           </div>
+        )}
+
+        {/* GitHub-specific: List PRs button */}
+        {isGitHub && (
+          <button
+            onClick={handleListPRs}
+            disabled={isLoadingPRs}
+            className={`mt-4 w-full h-12 flex items-center justify-center gap-3 font-medium rounded-xl ${brand.buttonBg} text-white transition-colors disabled:opacity-50`}
+          >
+            {isLoadingPRs ? (
+              <>
+                <div className={`size-5 rounded-full border-2 border-t-white animate-spin border-white/30`} />
+                Loading PRs...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/>
+                </svg>
+                List Pull Requests
+              </>
+            )}
+          </button>
         )}
       </div>
     );
