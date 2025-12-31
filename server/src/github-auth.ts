@@ -4,6 +4,7 @@ import { getGitHubTokens, saveGitHubTokens, deleteGitHubTokens } from './token-s
 // OAuth2 scopes required for GitHub access
 const SCOPES = [
   'read:user',      // Read user profile data
+  'read:org',       // Read organization and team membership (for team-based PR reviews)
 ];
 
 // Get environment variables
