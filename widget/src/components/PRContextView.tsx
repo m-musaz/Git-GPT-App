@@ -100,15 +100,17 @@ function FileItem({ file, isDark, isExpanded, onToggle }: {
     <div className={`border-b last:border-b-0 ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
       <button
         onClick={onToggle}
-        className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:${isDark ? 'bg-slate-800' : 'bg-gray-50'} transition-colors`}
+        className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${
+          isDark ? 'hover:bg-slate-800' : 'hover:bg-gray-50'
+        }`}
       >
-        <span className={`font-mono text-xs font-bold w-4 ${statusColor}`}>
+        <span className={`font-mono text-xs font-bold w-4 flex-shrink-0 ${statusColor}`}>
           {statusIcon}
         </span>
-        <span className={`flex-1 text-sm font-mono truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+        <span className={`flex-1 text-sm font-mono break-all ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
           {file.previous_filename ? (
             <>
-              <span className="text-gray-500">{file.previous_filename}</span>
+              <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>{file.previous_filename}</span>
               <span className="mx-1">→</span>
               {file.filename}
             </>
@@ -116,9 +118,9 @@ function FileItem({ file, isDark, isExpanded, onToggle }: {
             file.filename
           )}
         </span>
-        <span className="flex items-center gap-2 text-xs">
-          <span className="text-green-500">+{file.additions}</span>
-          <span className="text-red-500">-{file.deletions}</span>
+        <span className="flex items-center gap-2 text-xs flex-shrink-0">
+          <span className={isDark ? 'text-green-400' : 'text-green-600'}>+{file.additions}</span>
+          <span className={isDark ? 'text-red-400' : 'text-red-600'}>-{file.deletions}</span>
           <svg
             className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''} ${isDark ? 'text-gray-400' : 'text-gray-600'}`}
             fill="none"
