@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useOpenAI } from './useOpenAI';
 import { WidgetContext, useWidget, type WidgetContextType } from './WidgetContext';
-import { AuthView, InvitesView } from './components';
+import { AuthView, InvitesView, PRContextView } from './components';
 import { PRsView } from './components/PRsView';
 import { theme } from './theme';
-import type { AuthStatusOutput, PendingInvitesOutput, PullRequestsOutput } from './types';
+import type { AuthStatusOutput, PendingInvitesOutput, PullRequestsOutput, PullRequestContext } from './types';
 import './main.css';
 
 // ============================================
@@ -14,7 +14,7 @@ import './main.css';
 function WidgetRouter({ initialData }: { initialData: unknown }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setAuthData, setInvitesData, setPrsData, authData } = useWidget();
+  const { setAuthData, setInvitesData, setPrsData, prContextData, authData } = useWidget();
   const [initialRouteSet, setInitialRouteSet] = useState(false);
 
   useEffect(() => {
@@ -114,6 +114,7 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
       <Route path="/" element={<AuthView initialAuthData={initialAuthData} />} />
       <Route path="/invites" element={<InvitesView />} />
       <Route path="/prs" element={<PRsView />} />
+      <Route path="/pr-context" element={<PRContextView initialData={prContextData ? { prContext: prContextData } : undefined} />} />
     </Routes>
   );
 }
@@ -125,6 +126,7 @@ export default function CalendarWidget() {
   const [authData, setAuthData] = useState<AuthStatusOutput | null>(null);
   const [invitesData, setInvitesData] = useState<PendingInvitesOutput | null>(null);
   const [prsData, setPrsData] = useState<PullRequestsOutput | null>(null);
+  const [prContextData, setPrContextData] = useState<PullRequestContext | null>(null);
 
   // Only restore from widgetState if there's no fresh data from the tool call
   useEffect(() => {
@@ -164,6 +166,8 @@ export default function CalendarWidget() {
     setInvitesData,
     prsData,
     setPrsData,
+    prContextData,
+    setPrContextData,
   };
 
   if (isLoading) {
