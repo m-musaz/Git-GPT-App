@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWidget } from '../WidgetContext';
 import { theme } from '../theme';
 import type { PullRequestContext, FileChange } from '../types';
@@ -163,6 +164,7 @@ function FileItem({ file, isDark, isExpanded, onToggle }: {
 
 export default function PRContextView({ initialData }: PRContextViewProps) {
   const { isDark, openExternal, notifyHeight } = useWidget();
+  const navigate = useNavigate();
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [showAllFiles, setShowAllFiles] = useState(false);
 
@@ -172,6 +174,10 @@ export default function PRContextView({ initialData }: PRContextViewProps) {
   useEffect(() => {
     notifyHeight?.();
   }, [expandedFiles, showAllFiles, notifyHeight]);
+
+  const handleBackToPRs = () => {
+    navigate('/prs');
+  };
 
   if (!prContext) {
     return (
@@ -230,16 +236,31 @@ export default function PRContextView({ initialData }: PRContextViewProps) {
               <span>{formatRelativeDate(pr.updatedAt)}</span>
             </div>
           </div>
-          <button
-            onClick={() => openExternal?.({ href: pr.htmlUrl })}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              isDark
-                ? 'bg-slate-700 hover:bg-slate-600 text-white'
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-            }`}
-          >
-            View on GitHub
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={handleBackToPRs}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                isDark
+                  ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to PRs
+            </button>
+            <button
+              onClick={() => openExternal?.({ href: pr.htmlUrl })}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                isDark
+                  ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              View on GitHub
+            </button>
+          </div>
         </div>
 
         {/* Branch info */}
