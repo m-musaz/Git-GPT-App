@@ -107,10 +107,13 @@ function FileItem({ file, isDark, isExpanded, onToggle }: {
         <span className={`font-mono text-xs font-bold w-4 flex-shrink-0 ${statusColor}`}>
           {statusIcon}
         </span>
-        <span className={`flex-1 text-sm font-mono break-all ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+        <span
+          className="flex-1 text-sm font-mono break-all"
+          style={{ color: isDark ? '#ffffff' : '#111827' }}
+        >
           {file.previous_filename ? (
             <>
-              <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>{file.previous_filename}</span>
+              <span style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>{file.previous_filename}</span>
               <span className="mx-1">→</span>
               {file.filename}
             </>
@@ -119,10 +122,11 @@ function FileItem({ file, isDark, isExpanded, onToggle }: {
           )}
         </span>
         <span className="flex items-center gap-2 text-xs flex-shrink-0">
-          <span className={isDark ? 'text-green-400' : 'text-green-600'}>+{file.additions}</span>
-          <span className={isDark ? 'text-red-400' : 'text-red-600'}>-{file.deletions}</span>
+          <span style={{ color: '#22c55e' }}>+{file.additions}</span>
+          <span style={{ color: '#ef4444' }}>-{file.deletions}</span>
           <svg
-            className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''} ${isDark ? 'text-gray-400' : 'text-gray-600'}`}
+            className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            style={{ color: isDark ? '#9ca3af' : '#4b5563' }}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -209,10 +213,16 @@ export default function PRContextView({ initialData }: PRContextViewProps) {
                 #{pr.number}
               </span>
             </div>
-            <h2 className={`text-lg font-semibold leading-tight ${theme.textPrimary(isDark)}`}>
+            <h2
+              className="text-lg font-semibold leading-tight"
+              style={{ color: isDark ? '#ffffff' : '#000000' }}
+            >
               {pr.title}
             </h2>
-            <div className={`mt-1 flex items-center gap-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            <div
+              className="mt-1 flex items-center gap-2 text-sm"
+              style={{ color: isDark ? '#9ca3af' : '#4b5563' }}
+            >
               <span>@{pr.author}</span>
               <span>·</span>
               <span>{pr.repository.fullName}</span>
@@ -233,10 +243,23 @@ export default function PRContextView({ initialData }: PRContextViewProps) {
         </div>
 
         {/* Branch info */}
-        <div className={`mt-3 flex items-center gap-2 text-sm font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          <span className={`px-2 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>{headRef}</span>
+        <div
+          className="mt-3 flex items-center gap-2 text-sm font-mono"
+          style={{ color: isDark ? '#9ca3af' : '#4b5563' }}
+        >
+          <span
+            className="px-2 py-0.5 rounded"
+            style={{ backgroundColor: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#e2e8f0' : '#374151' }}
+          >
+            {headRef}
+          </span>
           <span>→</span>
-          <span className={`px-2 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>{baseRef}</span>
+          <span
+            className="px-2 py-0.5 rounded"
+            style={{ backgroundColor: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#e2e8f0' : '#374151' }}
+          >
+            {baseRef}
+          </span>
         </div>
 
         {/* Labels */}
@@ -281,28 +304,43 @@ export default function PRContextView({ initialData }: PRContextViewProps) {
       </div>
 
       {/* Stats */}
-      <div className={`px-4 py-3 flex items-center gap-4 text-sm border-b ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'}`}>
+      <div
+        className="px-4 py-3 flex items-center gap-4 text-sm border-b"
+        style={{
+          borderColor: isDark ? '#334155' : '#e5e7eb',
+          backgroundColor: isDark ? 'rgba(15, 23, 42, 0.5)' : '#f9fafb',
+        }}
+      >
         <div className="flex items-center gap-1.5">
-          <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Files:</span>
-          <span className={`font-medium ${theme.textPrimary(isDark)}`}>{changedFiles}</span>
+          <span style={{ color: isDark ? '#9ca3af' : '#4b5563' }}>Files:</span>
+          <span className="font-medium" style={{ color: isDark ? '#ffffff' : '#000000' }}>{changedFiles}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-green-500 font-medium">+{additions}</span>
-          <span className="text-red-500 font-medium">-{deletions}</span>
+          <span style={{ color: '#22c55e' }} className="font-medium">+{additions}</span>
+          <span style={{ color: '#ef4444' }} className="font-medium">-{deletions}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Commits:</span>
-          <span className={`font-medium ${theme.textPrimary(isDark)}`}>{prContext.commits}</span>
+          <span style={{ color: isDark ? '#9ca3af' : '#4b5563' }}>Commits:</span>
+          <span className="font-medium" style={{ color: isDark ? '#ffffff' : '#000000' }}>{prContext.commits}</span>
         </div>
       </div>
 
       {/* Description */}
       {description && (
-        <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
-          <h3 className={`text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div
+          className="px-4 py-3 border-b"
+          style={{ borderColor: isDark ? '#334155' : '#e5e7eb' }}
+        >
+          <h3
+            className="text-sm font-medium mb-2"
+            style={{ color: isDark ? '#d1d5db' : '#374151' }}
+          >
             Description
           </h3>
-          <div className={`text-sm whitespace-pre-wrap ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+          <div
+            className="text-sm whitespace-pre-wrap"
+            style={{ color: isDark ? '#9ca3af' : '#4b5563' }}
+          >
             {description.length > 500 ? description.slice(0, 500) + '...' : description}
           </div>
         </div>
@@ -310,20 +348,28 @@ export default function PRContextView({ initialData }: PRContextViewProps) {
 
       {/* Files */}
       <div>
-        <div className={`px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
-          <h3 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div
+          className="px-4 py-2 flex items-center justify-between"
+          style={{ backgroundColor: isDark ? '#1e293b' : '#f3f4f6' }}
+        >
+          <h3
+            className="text-sm font-medium"
+            style={{ color: isDark ? '#d1d5db' : '#374151' }}
+          >
             Changed Files ({files.length})
           </h3>
           <div className="flex gap-2">
             <button
               onClick={() => setExpandedFiles(new Set(files.map(f => f.filename)))}
-              className={`text-xs px-2 py-1 rounded ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-200 text-gray-600'}`}
+              className="text-xs px-2 py-1 rounded transition-colors"
+              style={{ color: isDark ? '#9ca3af' : '#4b5563' }}
             >
               Expand All
             </button>
             <button
               onClick={() => setExpandedFiles(new Set())}
-              className={`text-xs px-2 py-1 rounded ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-200 text-gray-600'}`}
+              className="text-xs px-2 py-1 rounded transition-colors"
+              style={{ color: isDark ? '#9ca3af' : '#4b5563' }}
             >
               Collapse All
             </button>
@@ -345,7 +391,11 @@ export default function PRContextView({ initialData }: PRContextViewProps) {
         {hasMoreFiles && !showAllFiles && (
           <button
             onClick={() => setShowAllFiles(true)}
-            className={`w-full py-2 text-sm font-medium ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+            className="w-full py-2 text-sm font-medium transition-colors"
+            style={{
+              backgroundColor: isDark ? '#1e293b' : '#f3f4f6',
+              color: isDark ? '#d1d5db' : '#374151',
+            }}
           >
             Show {files.length - 10} more files
           </button>
