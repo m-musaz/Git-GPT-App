@@ -199,36 +199,32 @@ export function PRsView() {
   };
 
   const handleReviewPR = async (pr: GitHubPullRequest) => {
+    setLoadingPRId(pr.id);
     try {
-      setLoadingPRId(pr.id);
+      const prName = `${pr.repository.full_name}#${pr.number}`;
+      console.log('[Widget] Fetching PR context for:', prName);
 
-      // Parse owner/repo from full_name
-      const [owner, repo] = pr.repository.full_name.split('/');
-      const prNumber = pr.number;
+      const result = await callTool('get_pr_context', { pr_name: prName });
+      console.log('[Widget] PR context result:', result);
 
-      console.log('[Widget] Fetching PR context for:', `${owner}/${repo}#${prNumber}`);
+      // Try different possible response structures
+      const resultObj = result as Record<string, unknown>;
+      const prContext = (
+        (resultObj?.structuredContent as Record<string, unknown>)?.prContext ||
+        resultObj?.prContext ||
+        resultObj
+      ) as PullRequestContext | undefined;
 
-      // Get the base URL from the iframe's origin (widget is served from our server)
-      const baseUrl = window.location.origin;
-
-      // Call the API endpoint
-      const response = await fetch(`${baseUrl}/api/pr-context/${owner}/${repo}/${prNumber}`);
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to fetch PR context');
+      if (prContext?.pr) {
+        console.log('[Widget] Got PR context, navigating to /pr-context');
+        setPrContextData(prContext);
+        setWidgetState({ view: 'pr-context', prContext });
+        navigate('/pr-context');
+      } else {
+        console.error('[Widget] No prContext in result:', result);
       }
-
-      const prContext: PullRequestContext = result.data;
-      console.log('[Widget] Got PR context:', prContext.pr.title);
-
-      // Update state and navigate to PR context view
-      setPrContextData(prContext);
-      navigate('/pr-context');
     } catch (err) {
       console.error('[Widget] Failed to get PR context:', err);
-      // Fallback: open the PR on GitHub
-      openExternal(pr.html_url);
     } finally {
       setLoadingPRId(null);
     }

@@ -14,7 +14,7 @@ import './main.css';
 function WidgetRouter({ initialData }: { initialData: unknown }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setAuthData, setInvitesData, setPrsData, prContextData, authData } = useWidget();
+  const { setAuthData, setInvitesData, setPrsData, setPrContextData, prContextData, authData } = useWidget();
   const [initialRouteSet, setInitialRouteSet] = useState(false);
 
   useEffect(() => {
@@ -27,6 +27,16 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
 
     const data = initialData as Record<string, unknown>;
     console.log('[Widget] Auto-detecting data type:', Object.keys(data));
+
+    // Check if it's PR context data (has 'prContext' object)
+    if ('prContext' in data && data.prContext) {
+      console.log('[Widget] Detected PR context data, navigating to /pr-context');
+      setPrContextData(data.prContext as PullRequestContext);
+      setAuthData({ authenticated: true, authType: 'github' });
+      navigate('/pr-context', { replace: true });
+      setInitialRouteSet(true);
+      return;
+    }
 
     // Check if it's PRs data (has 'pullRequests' array)
     if ('pullRequests' in data && Array.isArray(data.pullRequests)) {

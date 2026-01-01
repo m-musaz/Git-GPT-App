@@ -825,7 +825,7 @@ ${context.description ? `**Description:**\n${context.description.slice(0, 500)}$
         prContext: context,
       },
       _meta: {
-        'openai/outputTemplate': 'ui://widget/pr-context-widget.html',
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
       },
       isError: false,
     };
