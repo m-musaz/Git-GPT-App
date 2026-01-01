@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@openai/apps-sdk-ui/components/Button';
 import { Badge } from '@openai/apps-sdk-ui/components/Badge';
 import { ArrowRotateCcw } from '@openai/apps-sdk-ui/components/Icon';
 import { useWidget } from '../WidgetContext';
 import { theme } from '../theme';
-import type { GitHubPullRequest, PullRequestsOutput, PRSearchType, PullRequestContext } from '../types';
+import type { GitHubPullRequest, PullRequestsOutput, PRSearchType } from '../types';
 
 interface PRCardProps {
   pr: GitHubPullRequest;
@@ -13,11 +12,9 @@ interface PRCardProps {
   index: number;
   total: number;
   onOpenPR: (url: string) => void;
-  onReviewPR: (pr: GitHubPullRequest) => void;
-  isLoadingReview: boolean;
 }
 
-function PRCard({ pr, isDark, index, total, onOpenPR, onReviewPR, isLoadingReview }: PRCardProps) {
+function PRCard({ pr, isDark, index, total, onOpenPR }: PRCardProps) {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -113,35 +110,8 @@ function PRCard({ pr, isDark, index, total, onOpenPR, onReviewPR, isLoadingRevie
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className={`pt-3 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} space-y-2`}>
-        {/* Review PR Button - Primary action */}
-        <button
-          onClick={() => onReviewPR(pr)}
-          disabled={isLoadingReview}
-          className={`w-full py-2.5 px-4 rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
-            isDark
-              ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-blue-800'
-              : 'bg-blue-500 hover:bg-blue-600 text-white disabled:bg-blue-300'
-          }`}
-        >
-          {isLoadingReview ? (
-            <>
-              <div className="size-4 rounded-full border-2 border-t-white animate-spin border-white/30" />
-              Loading...
-            </>
-          ) : (
-            <>
-              <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              Review PR
-            </>
-          )}
-        </button>
-
-        {/* View on GitHub Button - Secondary action */}
+      {/* Action Button */}
+      <div className={`pt-3 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <Button
           className={`rounded-xl py-2 w-full ${theme.buttonBorder(isDark)} ${theme.buttonShadow()}`}
           color="secondary"
@@ -187,47 +157,13 @@ function getSearchTypeDescription(searchType: PRSearchType): string {
 }
 
 export function PRsView() {
-  const { isDark, prsData, setPrsData, callTool, openExternal, setWidgetState, notifyHeight, setPrContextData } = useWidget();
-  const navigate = useNavigate();
+  const { isDark, prsData, setPrsData, callTool, openExternal, setWidgetState, notifyHeight } = useWidget();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [loadingPRId, setLoadingPRId] = useState<number | null>(null);
 
-  useEffect(() => { notifyHeight(); }, [prsData, isRefreshing, loadingPRId, notifyHeight]);
+  useEffect(() => { notifyHeight(); }, [prsData, isRefreshing, notifyHeight]);
 
   const handleOpenPR = (url: string) => {
     openExternal(url);
-  };
-
-  const handleReviewPR = async (pr: GitHubPullRequest) => {
-    setLoadingPRId(pr.id);
-    try {
-      const prName = `${pr.repository.full_name}#${pr.number}`;
-      console.log('[Widget] Fetching PR context for:', prName);
-
-      const result = await callTool('get_pr_context', { pr_name: prName });
-      console.log('[Widget] PR context result:', result);
-
-      // Try different possible response structures
-      const resultObj = result as Record<string, unknown>;
-      const prContext = (
-        (resultObj?.structuredContent as Record<string, unknown>)?.prContext ||
-        resultObj?.prContext ||
-        resultObj
-      ) as PullRequestContext | undefined;
-
-      if (prContext?.pr) {
-        console.log('[Widget] Got PR context, navigating to /pr-context');
-        setPrContextData(prContext);
-        setWidgetState({ view: 'pr-context', prContext });
-        navigate('/pr-context');
-      } else {
-        console.error('[Widget] No prContext in result:', result);
-      }
-    } catch (err) {
-      console.error('[Widget] Failed to get PR context:', err);
-    } finally {
-      setLoadingPRId(null);
-    }
   };
 
   const handleRefresh = async () => {
@@ -245,19 +181,10 @@ export function PRsView() {
     }
   };
 
-  const handleBack = () => {
-    navigate('/');
-  };
-
   if (!prsData) {
     return (
       <div className={`p-6 rounded-xl border shadow-sm ${theme.card(isDark)}`}>
         <p className={`text-center ${theme.textPrimary(isDark)}`}>No PR data</p>
-        <div className="flex justify-center mt-4">
-          <Button variant="outline" color="secondary" size="sm" onClick={handleBack}>
-            Back
-          </Button>
-        </div>
       </div>
     );
   }
@@ -348,8 +275,6 @@ export function PRsView() {
                 index={idx + 1}
                 total={pullRequests.length}
                 onOpenPR={handleOpenPR}
-                onReviewPR={handleReviewPR}
-                isLoadingReview={loadingPRId === pr.id}
               />
             ))}
           </div>

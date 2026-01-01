@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useOpenAI } from './useOpenAI';
 import { WidgetContext, useWidget, type WidgetContextType } from './WidgetContext';
 import { AuthView, InvitesView, PRContextView } from './components';
@@ -119,16 +119,12 @@ function WidgetRouter({ initialData }: { initialData: unknown }) {
     return authData;
   })();
 
-  const handleBackToPRs = () => {
-    navigate('/prs');
-  };
-
   return (
     <Routes>
       <Route path="/" element={<AuthView initialAuthData={initialAuthData} />} />
       <Route path="/invites" element={<InvitesView />} />
       <Route path="/prs" element={<PRsView />} />
-      <Route path="/pr-context" element={<PRContextView initialData={prContextData ? { prContext: prContextData } : undefined} onBack={handleBackToPRs} />} />
+      <Route path="/pr-context" element={<PRContextView initialData={prContextData ? { prContext: prContextData } : undefined} />} />
     </Routes>
   );
 }
