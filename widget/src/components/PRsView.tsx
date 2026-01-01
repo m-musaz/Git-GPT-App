@@ -5,7 +5,7 @@ import { Badge } from '@openai/apps-sdk-ui/components/Badge';
 import { ArrowRotateCcw } from '@openai/apps-sdk-ui/components/Icon';
 import { useWidget } from '../WidgetContext';
 import { theme } from '../theme';
-import type { GitHubPullRequest, PullRequestsOutput, PRSearchType } from '../types';
+import type { GitHubPullRequest, PullRequestsOutput, PRSearchType, PullRequestContext } from '../types';
 
 interface PRCardProps {
   pr: GitHubPullRequest;
@@ -187,7 +187,7 @@ function getSearchTypeDescription(searchType: PRSearchType): string {
 }
 
 export function PRsView() {
-  const { isDark, prsData, setPrsData, callTool, openExternal, setWidgetState, notifyHeight } = useWidget();
+  const { isDark, prsData, setPrsData, callTool, openExternal, setWidgetState, notifyHeight, setPrContextData } = useWidget();
   const navigate = useNavigate();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadingPRId, setLoadingPRId] = useState<number | null>(null);
@@ -201,17 +201,34 @@ export function PRsView() {
   const handleReviewPR = async (pr: GitHubPullRequest) => {
     try {
       setLoadingPRId(pr.id);
-      // Call get_pr_context with the full PR identifier
-      const prName = `${pr.repository.full_name}#${pr.number}`;
-      console.log('[Widget] Getting PR context for:', prName);
 
-      const result = await callTool('get_pr_context', { pr_name: prName });
-      console.log('[Widget] PR context result:', result);
+      // Parse owner/repo from full_name
+      const [owner, repo] = pr.repository.full_name.split('/');
+      const prNumber = pr.number;
 
-      // The tool will return the PR context widget
-      // ChatGPT will handle displaying the new widget
+      console.log('[Widget] Fetching PR context for:', `${owner}/${repo}#${prNumber}`);
+
+      // Get the base URL from the iframe's origin (widget is served from our server)
+      const baseUrl = window.location.origin;
+
+      // Call the API endpoint
+      const response = await fetch(`${baseUrl}/api/pr-context/${owner}/${repo}/${prNumber}`);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to fetch PR context');
+      }
+
+      const prContext: PullRequestContext = result.data;
+      console.log('[Widget] Got PR context:', prContext.pr.title);
+
+      // Update state and navigate to PR context view
+      setPrContextData(prContext);
+      navigate('/pr-context');
     } catch (err) {
       console.error('[Widget] Failed to get PR context:', err);
+      // Fallback: open the PR on GitHub
+      openExternal(pr.html_url);
     } finally {
       setLoadingPRId(null);
     }

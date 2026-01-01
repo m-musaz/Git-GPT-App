@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { AuthStatusOutput, PendingInvitesOutput, PullRequestsOutput } from './types';
+import type { AuthStatusOutput, PendingInvitesOutput, PullRequestsOutput, PullRequestContext } from './types';
 
 export interface WidgetContextType {
   theme: 'light' | 'dark';
@@ -14,6 +14,8 @@ export interface WidgetContextType {
   setInvitesData: (data: PendingInvitesOutput | null) => void;
   prsData: PullRequestsOutput | null;
   setPrsData: (data: PullRequestsOutput | null) => void;
+  prContextData: PullRequestContext | null;
+  setPrContextData: (data: PullRequestContext | null) => void;
 }
 
 export const WidgetContext = createContext<WidgetContextType | null>(null);

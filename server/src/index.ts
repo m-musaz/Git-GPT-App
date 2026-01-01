@@ -44,6 +44,7 @@ import {
   getPendingInvites,
   respondToInvite,
 } from './calendar-service.js';
+import { getPullRequestContext } from './github-api.js';
 import { handleMCPRequest } from './mcp-server.js';
 import { deleteTokens, deleteGitHubTokens } from './token-store.js';
 import {
@@ -468,6 +469,29 @@ app.post('/api/respond', async (req: Request, res: Response) => {
     res.json({ success: true, data: result });
   } catch (err: any) {
     console.error('Error responding to invite:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get PR context (for widget UI path)
+app.get('/api/pr-context/:owner/:repo/:number', async (req: Request, res: Response) => {
+  const userId = DEFAULT_USER_ID;
+  const { owner, repo, number } = req.params;
+
+  if (!isGitHubAuthenticated(userId)) {
+    return res.status(401).json({
+      success: false,
+      error: 'Not authenticated with GitHub',
+      authUrl: getGitHubAuthUrl(userId),
+    });
+  }
+
+  try {
+    const prName = `${owner}/${repo}#${number}`;
+    const prContext = await getPullRequestContext(userId, prName);
+    res.json({ success: true, data: prContext });
+  } catch (err: any) {
+    console.error('Error fetching PR context:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
