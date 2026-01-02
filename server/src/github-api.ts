@@ -14,6 +14,8 @@ import { getGitHubTokens } from "./token-store.js";
 const GITHUB_API_BASE = "https://api.github.com";
 const MAX_RESULTS = 10;
 
+// testingss
+
 // Active requests lock to prevent duplicate simultaneous calls
 const activeRequests = new Map<string, Promise<PostReviewResponse>>();
 /**
@@ -298,7 +300,11 @@ function setCachedPRContext(cacheKey: string, data: PullRequestContext): void {
     data,
     expiresAt: Date.now() + PR_CONTEXT_CACHE_TTL,
   });
-  console.log(`[Cache] PR context cached for ${cacheKey} (TTL: ${PR_CONTEXT_CACHE_TTL / 1000}s)`);
+  console.log(
+    `[Cache] PR context cached for ${cacheKey} (TTL: ${
+      PR_CONTEXT_CACHE_TTL / 1000
+    }s)`
+  );
 }
 
 // Clean up expired entries periodically
@@ -379,11 +385,16 @@ async function findPRByNumber(
           number: number;
           repository_url: string;
         }>;
-      }>(accessToken, `/search/issues?q=${searchQuery}&sort=updated&order=desc&per_page=50`);
+      }>(
+        accessToken,
+        `/search/issues?q=${searchQuery}&sort=updated&order=desc&per_page=50`
+      );
 
       for (const item of result.items) {
         if (item.number === prNumber) {
-          const repoMatch = item.repository_url.match(/repos\/([^/]+)\/([^/]+)$/);
+          const repoMatch = item.repository_url.match(
+            /repos\/([^/]+)\/([^/]+)$/
+          );
           if (repoMatch) {
             return { owner: repoMatch[1], repo: repoMatch[2] };
           }
@@ -483,21 +494,26 @@ export async function getPullRequestContext(
   }>(accessToken, `/repos/${owner}/${repo}/pulls/${prNumber}`);
 
   // Fetch changed files with patches
-  const filesData = await githubRequest<Array<{
-    sha: string;
-    filename: string;
-    status: string;
-    additions: number;
-    deletions: number;
-    changes: number;
-    patch?: string;
-    previous_filename?: string;
-  }>>(accessToken, `/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`);
+  const filesData = await githubRequest<
+    Array<{
+      sha: string;
+      filename: string;
+      status: string;
+      additions: number;
+      deletions: number;
+      changes: number;
+      patch?: string;
+      previous_filename?: string;
+    }>
+  >(
+    accessToken,
+    `/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`
+  );
 
   // Build file changes with patches
   const files: FileChange[] = filesData.map((file) => ({
     filename: file.filename,
-    status: file.status as FileChange['status'],
+    status: file.status as FileChange["status"],
     additions: file.additions,
     deletions: file.deletions,
     changes: file.changes,
@@ -506,9 +522,9 @@ export async function getPullRequestContext(
   }));
 
   // Determine state
-  let state: 'open' | 'closed' | 'merged' = prData.state as 'open' | 'closed';
+  let state: "open" | "closed" | "merged" = prData.state as "open" | "closed";
   if (prData.merged_at) {
-    state = 'merged';
+    state = "merged";
   }
 
   const context: PullRequestContext = {
@@ -529,7 +545,7 @@ export async function getPullRequestContext(
       headSha: prData.head.sha,
       baseSha: prData.base.sha,
     },
-    description: prData.body || '',
+    description: prData.body || "",
     files,
     commits: prData.commits,
     baseRef: prData.base.ref,
@@ -577,12 +593,18 @@ export async function postReviewComments(
   const accessToken = storedData.tokens.access_token;
 
   // Normalize PR name for consistent idempotency keys (case-insensitive)
-  const normalizedPrName = String(prName || "").trim().toLowerCase();
+  const normalizedPrName = String(prName || "")
+    .trim()
+    .toLowerCase();
 
   // Short-term lock to prevent duplicate calls within 10 seconds
-  const lockKey = `lock:${normalizedPrName}:${JSON.stringify(comments.map(c => c.body).sort())}`;
+  const lockKey = `lock:${normalizedPrName}:${JSON.stringify(
+    comments.map((c) => c.body).sort()
+  )}`;
   if (activeRequests.has(lockKey)) {
-    console.log(`[PostReview] Duplicate request blocked (lock active): ${lockKey}`);
+    console.log(
+      `[PostReview] Duplicate request blocked (lock active): ${lockKey}`
+    );
     // Wait for the first request to complete and return its result
     const existingResult = await activeRequests.get(lockKey);
     if (existingResult) return existingResult;
@@ -598,6 +620,40 @@ export async function postReviewComments(
   // Clean up lock after 10 seconds
   setTimeout(() => activeRequests.delete(lockKey), 10000);
 
+  try {
+    return await executePostReview(
+      userId,
+      prName,
+      comments,
+      event,
+      idempotencyKey,
+      accessToken,
+      normalizedPrName,
+      resolveLock!
+    );
+  } catch (error) {
+    // Resolve lock with error response so waiting requests don't hang
+    const errorResponse: PostReviewResponse = {
+      success: false,
+      prUrl: "",
+      commentsPosted: 0,
+      message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+    resolveLock!(errorResponse);
+    throw error;
+  }
+}
+
+async function executePostReview(
+  userId: string,
+  prName: string,
+  comments: ReviewComment[],
+  event: "COMMENT" | "APPROVE" | "REQUEST_CHANGES",
+  idempotencyKey: string,
+  accessToken: string,
+  normalizedPrName: string,
+  resolveLock: (result: PostReviewResponse) => void
+): Promise<PostReviewResponse> {
   // Generate payload hash for content-based deduplication
   const normalizeComment = (c: ReviewComment) => ({
     body: String(c?.body || "").trim(),
@@ -620,7 +676,9 @@ export async function postReviewComments(
   // Use normalized PR name for idempotency key (ignore userId for content-based dedup)
   const payloadKey = `idempotency:content:${normalizedPrName}:${payloadHash}`;
 
-  console.log(`[PostReview] Checking idempotency for payload key: ${payloadKey}`);
+  console.log(
+    `[PostReview] Checking idempotency for payload key: ${payloadKey}`
+  );
 
   // Check if this exact payload was already processed
   if (idempotencyService.isProcessed(payloadKey)) {
@@ -647,7 +705,8 @@ export async function postReviewComments(
 
   if (!parsed) {
     const numberMatch = prName.match(/(\d+)/);
-    const username = storedData.user?.login;
+    const storedData = getGitHubTokens(userId);
+    const username = storedData?.user?.login;
     if (numberMatch && username) {
       const prNumber = parseInt(numberMatch[1], 10);
       const found = await findPRByNumber(accessToken, prNumber, username);
@@ -666,11 +725,13 @@ export async function postReviewComments(
   const { owner, repo, prNumber } = parsed;
 
   // Check GitHub for existing reviews with same content (persistent duplicate check)
-  const existingReviews = await githubRequest<Array<{
-    id: number;
-    body: string | null;
-    state: string;
-  }>>(accessToken, `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`);
+  const existingReviews = await githubRequest<
+    Array<{
+      id: number;
+      body: string | null;
+      state: string;
+    }>
+  >(accessToken, `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`);
 
   // Separate inline comments from general comments
   const inlineComments = comments.filter((c) => c.path && c.line);
@@ -688,7 +749,9 @@ export async function postReviewComments(
       (r) => r.body?.trim().toLowerCase() === reviewBody.trim().toLowerCase()
     );
     if (duplicateReview) {
-      console.log(`[PostReview] Duplicate review found on GitHub (ID: ${duplicateReview.id}), skipping post`);
+      console.log(
+        `[PostReview] Duplicate review found on GitHub (ID: ${duplicateReview.id}), skipping post`
+      );
       const prData = await githubRequest<{ html_url: string }>(
         accessToken,
         `/repos/${owner}/${repo}/pulls/${prNumber}`
