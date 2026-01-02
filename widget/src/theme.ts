@@ -19,7 +19,7 @@ export const theme = {
     isDark ? "text-white" : "text-black",
 
   textSecondary: (isDark: boolean) =>
-    isDark ? "text-black" : "text-black",
+    isDark ? "text-gray-300" : "text-gray-600",
 
   buttonShadow: () =>
     'hover:shadow-xl transition-all duration-200 border shadow-md ',

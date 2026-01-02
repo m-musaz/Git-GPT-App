@@ -18,7 +18,9 @@ import {
   getGitHubAuthUrl,
   getGitHubUser,
 } from './github-auth.js';
-import { listPullRequests } from './github-api.js';
+import { listPullRequests, getPullRequestContext, postReviewComments } from './github-api.js';
+import type { ReviewComment } from './types.js';
+import type { PullRequestContext } from './types.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -64,6 +66,21 @@ function getWidgetResources(): WidgetResource[] {
           connect_domains: ['https://chatgpt.com', baseUrl, 'https://accounts.google.com'],
           resource_domains: [baseUrl, 'https://*.oaistatic.com'],
           redirect_domains: ['https://accounts.google.com'],
+        },
+      },
+    },
+    // PR Context widget for code review
+    {
+      uri: 'ui://widget/pr-context-widget.html',
+      name: 'PR Context Widget',
+      mimeType: 'text/html+skybridge',
+      _meta: {
+        'openai/widgetPrefersBorder': true,
+        'openai/widgetDomain': 'https://chatgpt.com',
+        'openai/widgetCSP': {
+          connect_domains: ['https://chatgpt.com', baseUrl, 'https://github.com', 'https://api.github.com'],
+          resource_domains: [baseUrl, 'https://*.oaistatic.com', 'https://github.com'],
+          redirect_domains: ['https://github.com'],
         },
       },
     },
@@ -312,6 +329,14 @@ function getTools(): AppsTool[] {
 
 **To see another user's PRs:** Provide their GitHub username (e.g., "Show me Inaam's PRs" → username: "Inaam")
 
+**IMPORTANT - This tool ONLY lists PRs. It CANNOT:**
+- Show PR details, files changed, commits, or diffs
+- Filter by merged/closed state (only shows open PRs)
+- Summarize what a PR does
+- Show code changes
+
+Do NOT suggest these features to the user. Only offer to list PRs.
+
 The tool requires GitHub authentication - it will prompt to connect if needed.`,
       inputSchema: {
         type: 'object',
@@ -333,6 +358,137 @@ The tool requires GitHub authentication - it will prompt to connect if needed.`,
       },
       securitySchemes: [
         { type: 'oauth2', scopes: ['read:user', 'read:org'] },
+      ],
+      _meta: {
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+        'openai/visibility': 'public',
+        'openai/widgetAccessible': true,
+      },
+    },
+    {
+      name: 'get_pr_context',
+      title: 'Get Pull Request Context',
+      description: `Get full context for a specific pull request including description, file changes, and unified diffs.
+
+**Use this when:**
+- User asks to review a specific PR (e.g., "Can you review PR #123?")
+- User selects a PR from a list for detailed review
+- User wants to see what changed in a PR
+
+**PR Identifier Formats:**
+- Full format: "owner/repo#123" (e.g., "facebook/react#12345")
+- Simple format: "pr-123" or "#123" or just "123" (searches user's recent PRs)
+
+**Returns:**
+- PR metadata (title, author, description, branches)
+- List of changed files with additions/deletions
+- Unified diffs for each file (for inline comment placement)
+- Labels and requested reviewers
+
+The tool requires GitHub authentication - it will prompt to connect if needed.`,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          pr_name: {
+            type: 'string',
+            description: 'PR identifier. Use "owner/repo#123" format for specific PRs, or "pr-123", "#123", or just "123" to search user\'s recent PRs.',
+          },
+        },
+        required: ['pr_name'],
+        additionalProperties: false,
+      },
+      annotations: {
+        title: 'Get Pull Request Context',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      securitySchemes: [
+        { type: 'oauth2', scopes: ['read:user', 'read:org'] },
+      ],
+      _meta: {
+        'openai/visibility': 'public',
+        'openai/outputTemplate': 'ui://widget/pr-context-widget.html',
+        'openai/widgetAccessible': false,
+      },
+    },
+    {
+      name: 'post_review_comments',
+      title: 'Post Review Comments',
+      description: `Post review comments to a GitHub pull request.
+
+**IMPORTANT: Call this tool only ONCE per user request. Do NOT make multiple calls for the same review.**
+
+This tool accepts an ARRAY of comments - put ALL comments (both inline and general) in a single call.
+
+**Comment Types (in the comments array):**
+- Inline comments: Include path + line to attach to specific code
+- General comments: Omit path/line for top-level review comments
+
+**Review Events:**
+- COMMENT (default): Neutral feedback
+- APPROVE: Only if user explicitly says "approve" or "LGTM"
+- REQUEST_CHANGES: Only if user explicitly requests changes
+
+The tool requires GitHub authentication.`,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          pr_name: {
+            type: 'string',
+            description: 'PR identifier in "owner/repo#123" format.',
+          },
+          comments: {
+            type: 'array',
+            description: 'Array of review comments to post.',
+            items: {
+              type: 'object',
+              properties: {
+                body: {
+                  type: 'string',
+                  description: 'The comment text.',
+                },
+                path: {
+                  type: 'string',
+                  description: 'File path for inline comment (e.g., "src/utils.ts"). Omit for general comments.',
+                },
+                line: {
+                  type: 'number',
+                  description: 'Line number for inline comment. Omit for general comments.',
+                },
+                side: {
+                  type: 'string',
+                  enum: ['LEFT', 'RIGHT'],
+                  description: 'Side of diff: RIGHT (new code, default) or LEFT (old code).',
+                },
+              },
+              required: ['body'],
+              additionalProperties: false,
+            },
+          },
+          event: {
+            type: 'string',
+            enum: ['COMMENT', 'APPROVE', 'REQUEST_CHANGES'],
+            description: 'Review event type. Default is COMMENT. Only use APPROVE or REQUEST_CHANGES if user explicitly requests.',
+          },
+          idempotency_key: {
+            type: 'string',
+            description: 'Unique key to prevent duplicate posts on retry. Generate a unique ID for each review submission.',
+          },
+        },
+        required: ['pr_name', 'idempotency_key'],
+        additionalProperties: false,
+      },
+      annotations: {
+        title: 'Post Review Comments',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      securitySchemes: [
+        { type: 'oauth2', scopes: ['repo'] },
       ],
       _meta: {
         'openai/visibility': 'public',
@@ -675,12 +831,195 @@ async function handleListPullRequests(
         searchedUser: result.searchedUser,
         totalCount: result.totalCount,
       },
+      _meta: {
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+      },
       isError: false,
     };
   } catch (error: any) {
     return {
       content: [{ type: 'text', text: `Error fetching pull requests: ${error.message}` }],
       structuredContent: { error: error.message },
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Handle get_pr_context tool
+ */
+async function handleGetPRContext(
+  args: { pr_name: string },
+  userId: string
+): Promise<AppsToolResponse> {
+  // Check authentication first
+  if (!isGitHubAuthenticated(userId)) {
+    const authUrl = getGitHubAuthUrl(userId);
+    return {
+      content: [{ type: 'text', text: 'User needs to connect their GitHub account first.' }],
+      structuredContent: {
+        authRequired: true,
+        authType: 'github',
+        authUrl,
+      },
+      _meta: {
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+      },
+      isError: false,
+    };
+  }
+
+  if (!args.pr_name || typeof args.pr_name !== 'string') {
+    return {
+      content: [{ type: 'text', text: 'Error: pr_name parameter is required (e.g., "owner/repo#123" or "pr-123")' }],
+      structuredContent: { error: 'pr_name parameter is required' },
+      isError: true,
+    };
+  }
+
+  try {
+    const context = await getPullRequestContext(userId, args.pr_name);
+
+    // Build a text summary for the content
+    const filesChangedSummary = context.files.slice(0, 5).map((f) => {
+      const status = f.status === 'added' ? '➕' : f.status === 'removed' ? '➖' : '📝';
+      return `${status} ${f.filename} (+${f.additions}/-${f.deletions})`;
+    }).join('\n');
+
+    const moreFiles = context.files.length > 5 ? `\n... and ${context.files.length - 5} more files` : '';
+
+    const textSummary = `**${context.pr.title}** (#${context.pr.number})
+
+**Repository:** ${context.pr.repository.fullName}
+**Author:** @${context.pr.author}
+**State:** ${context.pr.state}
+**Branches:** ${context.headRef} → ${context.baseRef}
+
+**Changes:** ${context.changedFiles} files (+${context.additions}/-${context.deletions})
+
+**Files:**
+${filesChangedSummary}${moreFiles}
+
+${context.description ? `**Description:**\n${context.description.slice(0, 500)}${context.description.length > 500 ? '...' : ''}` : ''}`;
+
+    return {
+      content: [{ type: 'text', text: textSummary }],
+      structuredContent: {
+        prContext: context,
+      },
+      _meta: {
+        'openai/outputTemplate': 'ui://widget/calendar-widget.html',
+      },
+      isError: false,
+    };
+  } catch (error: any) {
+    return {
+      content: [{ type: 'text', text: `Error fetching PR context: ${error.message}` }],
+      structuredContent: { error: error.message },
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Handle post_review_comments tool
+ */
+async function handlePostReviewComments(
+  args: {
+    pr_name: string;
+    comments: ReviewComment[];
+    event?: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES';
+    idempotency_key: string;
+  },
+  userId: string
+): Promise<AppsToolResponse> {
+  // Check authentication first
+  if (!isGitHubAuthenticated(userId)) {
+    const authUrl = getGitHubAuthUrl(userId);
+    return {
+      content: [{ type: 'text', text: 'User needs to connect their GitHub account first.' }],
+      structuredContent: {
+        authRequired: true,
+        authType: 'github',
+        authUrl,
+      },
+      isError: false,
+    };
+  }
+
+  // Validate required parameters
+  if (!args.pr_name || typeof args.pr_name !== 'string') {
+    return {
+      content: [{ type: 'text', text: 'Error: pr_name parameter is required (e.g., "owner/repo#123")' }],
+      structuredContent: { error: 'pr_name parameter is required', success: false },
+      isError: true,
+    };
+  }
+
+  // Comments can be empty for APPROVE or REQUEST_CHANGES events
+  const comments = args.comments || [];
+  if (!Array.isArray(comments)) {
+    return {
+      content: [{ type: 'text', text: 'Error: comments must be an array' }],
+      structuredContent: { error: 'comments must be an array', success: false },
+      isError: true,
+    };
+  }
+
+  // For COMMENT event, require at least one comment
+  if ((!args.event || args.event === 'COMMENT') && comments.length === 0) {
+    return {
+      content: [{ type: 'text', text: 'Error: At least one comment is required for COMMENT event' }],
+      structuredContent: { error: 'comments array is required for COMMENT event', success: false },
+      isError: true,
+    };
+  }
+
+  if (!args.idempotency_key || typeof args.idempotency_key !== 'string') {
+    return {
+      content: [{ type: 'text', text: 'Error: idempotency_key is required to prevent duplicate comments' }],
+      structuredContent: { error: 'idempotency_key is required', success: false },
+      isError: true,
+    };
+  }
+
+  try {
+    const result = await postReviewComments(
+      userId,
+      args.pr_name,
+      comments,
+      args.event || 'COMMENT',
+      args.idempotency_key
+    );
+
+    // Build human-readable summary
+    const inlineCount = comments.filter(c => c.path && c.line).length;
+    const generalCount = comments.length - inlineCount;
+
+    let summary = result.message;
+    if (inlineCount > 0 && generalCount > 0) {
+      summary += ` (${inlineCount} inline, ${generalCount} general)`;
+    } else if (inlineCount > 0) {
+      summary += ` (${inlineCount} inline)`;
+    } else if (generalCount > 0) {
+      summary += ` (${generalCount} general)`;
+    }
+
+    return {
+      content: [{ type: 'text', text: `${summary}\n\nView at: ${result.prUrl}` }],
+      structuredContent: {
+        success: result.success,
+        reviewId: result.reviewId,
+        prUrl: result.prUrl,
+        commentsPosted: result.commentsPosted,
+        message: result.message,
+      },
+      isError: false,
+    };
+  } catch (error: any) {
+    return {
+      content: [{ type: 'text', text: `Error posting review: ${error.message}` }],
+      structuredContent: { error: error.message, success: false },
       isError: true,
     };
   }
@@ -805,6 +1144,23 @@ export function createMCPServer(): Server {
       case 'list_pull_requests':
         return await handleListPullRequests(
           args as { username?: string },
+          userId
+        ) as unknown as CallToolResult;
+
+      case 'get_pr_context':
+        return await handleGetPRContext(
+          args as { pr_name: string },
+          userId
+        ) as unknown as CallToolResult;
+
+      case 'post_review_comments':
+        return await handlePostReviewComments(
+          args as {
+            pr_name: string;
+            comments: ReviewComment[];
+            event?: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES';
+            idempotency_key: string;
+          },
           userId
         ) as unknown as CallToolResult;
 
@@ -982,6 +1338,23 @@ export async function handleMCPRequest(
         case 'list_pull_requests':
           return await handleListPullRequests(
             args as { username?: string },
+            toolUserId
+          );
+
+        case 'get_pr_context':
+          return await handleGetPRContext(
+            args as { pr_name: string },
+            toolUserId
+          );
+
+        case 'post_review_comments':
+          return await handlePostReviewComments(
+            args as {
+              pr_name: string;
+              comments: ReviewComment[];
+              event?: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES';
+              idempotency_key: string;
+            },
             toolUserId
           );
 

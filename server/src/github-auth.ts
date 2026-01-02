@@ -5,6 +5,7 @@ import { getGitHubTokens, saveGitHubTokens, deleteGitHubTokens } from './token-s
 const SCOPES = [
   'read:user',      // Read user profile data
   'read:org',       // Read organization and team membership (for team-based PR reviews)
+  'repo',           // Full repo access (required for posting PR reviews)
 ];
 
 // Get environment variables

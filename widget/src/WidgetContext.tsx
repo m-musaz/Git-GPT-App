@@ -1,17 +1,21 @@
 import { createContext, useContext } from 'react';
-import type { AuthStatusOutput, PendingInvitesOutput } from './types';
+import type { AuthStatusOutput, PendingInvitesOutput, PullRequestsOutput, PullRequestContext } from './types';
 
 export interface WidgetContextType {
   theme: 'light' | 'dark';
   isDark: boolean;
   callTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
-  openExternal: (options: { href: string }) => void;
+  openExternal: (url: string) => void;
   notifyHeight: () => void;
   setWidgetState: (state: Record<string, unknown>) => void;
   authData: AuthStatusOutput | null;
   setAuthData: (data: AuthStatusOutput | null) => void;
   invitesData: PendingInvitesOutput | null;
   setInvitesData: (data: PendingInvitesOutput | null) => void;
+  prsData: PullRequestsOutput | null;
+  setPrsData: (data: PullRequestsOutput | null) => void;
+  prContextData: PullRequestContext | null;
+  setPrContextData: (data: PullRequestContext | null) => void;
 }
 
 export const WidgetContext = createContext<WidgetContextType | null>(null);

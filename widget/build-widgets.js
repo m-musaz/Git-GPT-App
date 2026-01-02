@@ -6,13 +6,14 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Only build the unified calendar widget
-const widgets = ['calendar-widget'];
+// Build both calendar widget and PR context widget
+const widgets = ['calendar-widget', 'pr-context-widget'];
 
 async function buildWidgets() {
-  for (const widget of widgets) {
+  for (let i = 0; i < widgets.length; i++) {
+    const widget = widgets[i];
     console.log(`Building ${widget}...`);
-    
+
     await build({
       configFile: false,
       root: __dirname,
@@ -22,7 +23,8 @@ async function buildWidgets() {
       ],
       build: {
         outDir: 'dist',
-        emptyOutDir: true,
+        // Only empty dist on first widget build
+        emptyOutDir: i === 0,
         assetsInlineLimit: 100000000,
         cssCodeSplit: false,
         minify: 'esbuild',
@@ -35,11 +37,11 @@ async function buildWidgets() {
       },
       logLevel: 'warn',
     });
-    
+
     console.log(`✓ ${widget} built`);
   }
-  
-  console.log('\nWidget built successfully!');
+
+  console.log('\nWidgets built successfully!');
 }
 
 buildWidgets().catch(console.error);
