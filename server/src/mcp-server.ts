@@ -477,7 +477,7 @@ The tool requires GitHub authentication.`,
             description: 'Unique key to prevent duplicate posts on retry. Generate a unique ID for each review submission.',
           },
         },
-        required: ['pr_name', 'comments', 'idempotency_key'],
+        required: ['pr_name', 'idempotency_key'],
         additionalProperties: false,
       },
       annotations: {
@@ -956,10 +956,21 @@ async function handlePostReviewComments(
     };
   }
 
-  if (!args.comments || !Array.isArray(args.comments) || args.comments.length === 0) {
+  // Comments can be empty for APPROVE or REQUEST_CHANGES events
+  const comments = args.comments || [];
+  if (!Array.isArray(comments)) {
     return {
-      content: [{ type: 'text', text: 'Error: comments array is required and must not be empty' }],
-      structuredContent: { error: 'comments array is required', success: false },
+      content: [{ type: 'text', text: 'Error: comments must be an array' }],
+      structuredContent: { error: 'comments must be an array', success: false },
+      isError: true,
+    };
+  }
+
+  // For COMMENT event, require at least one comment
+  if ((!args.event || args.event === 'COMMENT') && comments.length === 0) {
+    return {
+      content: [{ type: 'text', text: 'Error: At least one comment is required for COMMENT event' }],
+      structuredContent: { error: 'comments array is required for COMMENT event', success: false },
       isError: true,
     };
   }
@@ -976,14 +987,14 @@ async function handlePostReviewComments(
     const result = await postReviewComments(
       userId,
       args.pr_name,
-      args.comments,
+      comments,
       args.event || 'COMMENT',
       args.idempotency_key
     );
 
     // Build human-readable summary
-    const inlineCount = args.comments.filter(c => c.path && c.line).length;
-    const generalCount = args.comments.length - inlineCount;
+    const inlineCount = comments.filter(c => c.path && c.line).length;
+    const generalCount = comments.length - inlineCount;
 
     let summary = result.message;
     if (inlineCount > 0 && generalCount > 0) {
