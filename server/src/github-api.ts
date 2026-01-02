@@ -13,7 +13,9 @@ import { getGitHubTokens } from "./token-store.js";
 
 const GITHUB_API_BASE = "https://api.github.com";
 const MAX_RESULTS = 10;
-// testting
+
+// Active requests lock to prevent duplicate simultaneous calls
+const activeRequests = new Map<string, Promise<PostReviewResponse>>();
 /**
  * Make an authenticated GitHub API request
  */
@@ -577,6 +579,25 @@ export async function postReviewComments(
   // Normalize PR name for consistent idempotency keys (case-insensitive)
   const normalizedPrName = String(prName || "").trim().toLowerCase();
 
+  // Short-term lock to prevent duplicate calls within 10 seconds
+  const lockKey = `lock:${normalizedPrName}:${JSON.stringify(comments.map(c => c.body).sort())}`;
+  if (activeRequests.has(lockKey)) {
+    console.log(`[PostReview] Duplicate request blocked (lock active): ${lockKey}`);
+    // Wait for the first request to complete and return its result
+    const existingResult = await activeRequests.get(lockKey);
+    if (existingResult) return existingResult;
+  }
+
+  // Set lock with a promise that will resolve when we're done
+  let resolveLock: (result: PostReviewResponse) => void;
+  const lockPromise = new Promise<PostReviewResponse>((resolve) => {
+    resolveLock = resolve;
+  });
+  activeRequests.set(lockKey, lockPromise);
+
+  // Clean up lock after 10 seconds
+  setTimeout(() => activeRequests.delete(lockKey), 10000);
+
   // Generate payload hash for content-based deduplication
   const normalizeComment = (c: ReviewComment) => ({
     body: String(c?.body || "").trim(),
@@ -644,6 +665,13 @@ export async function postReviewComments(
 
   const { owner, repo, prNumber } = parsed;
 
+  // Check GitHub for existing reviews with same content (persistent duplicate check)
+  const existingReviews = await githubRequest<Array<{
+    id: number;
+    body: string | null;
+    state: string;
+  }>>(accessToken, `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`);
+
   // Separate inline comments from general comments
   const inlineComments = comments.filter((c) => c.path && c.line);
   const generalComments = comments.filter((c) => !c.path || !c.line);
@@ -653,6 +681,27 @@ export async function postReviewComments(
     .map((c) => c.body)
     .filter(Boolean)
     .join("\n\n");
+
+  // Check if this exact review body already exists
+  if (reviewBody) {
+    const duplicateReview = existingReviews.find(
+      (r) => r.body?.trim().toLowerCase() === reviewBody.trim().toLowerCase()
+    );
+    if (duplicateReview) {
+      console.log(`[PostReview] Duplicate review found on GitHub (ID: ${duplicateReview.id}), skipping post`);
+      const prData = await githubRequest<{ html_url: string }>(
+        accessToken,
+        `/repos/${owner}/${repo}/pulls/${prNumber}`
+      );
+      return {
+        success: true,
+        reviewId: duplicateReview.id,
+        prUrl: prData.html_url,
+        commentsPosted: 0,
+        message: `Review already exists on PR #${prNumber} (duplicate prevented)`,
+      };
+    }
+  }
 
   // Determine if we should create a review
   const shouldCreateReview =
@@ -704,6 +753,9 @@ export async function postReviewComments(
   // Mark as processed for both keys
   idempotencyService.markProcessed(idempKey, response);
   idempotencyService.markProcessed(payloadKey, response);
+
+  // Resolve the lock so waiting requests get the result
+  resolveLock!(response);
 
   return response;
 }
