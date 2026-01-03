@@ -54,7 +54,8 @@ async function searchPullRequests(
   query: string,
   limit: number = DEFAULT_MAX_RESULTS,
   dateFrom?: string,
-  dateTo?: string
+  dateTo?: string,
+  repository?: string
 ): Promise<GitHubPullRequest[]> {
   // Add date filters to query if provided
   let fullQuery = query;
@@ -63,6 +64,9 @@ async function searchPullRequests(
   }
   if (dateTo) {
     fullQuery += ` updated:<=${dateTo}`;
+  }
+  if (repository) {
+    fullQuery += ` repo:${repository}`;
   }
   
   const searchQuery = encodeURIComponent(`${fullQuery} type:pr`);
@@ -178,7 +182,8 @@ export async function listPullRequests(
   specifiedUser?: string,
   limit: number = DEFAULT_MAX_RESULTS,
   dateFrom?: string,
-  dateTo?: string
+  dateTo?: string,
+  repository?: string
 ): Promise<ListPullRequestsResult> {
   const storedData = getGitHubTokens(userId);
 
@@ -197,7 +202,8 @@ export async function listPullRequests(
       `author:${specifiedUser} is:open`,
       limit,
       dateFrom,
-      dateTo
+      dateTo,
+      repository
     );
     return {
       pullRequests: prs,
@@ -214,7 +220,8 @@ export async function listPullRequests(
     `author:${myUsername} is:open`,
     limit,
     dateFrom,
-    dateTo
+    dateTo,
+    repository
   );
 
   if (authoredPRs.length > 0) {
@@ -235,7 +242,8 @@ export async function listPullRequests(
     `review-requested:${myUsername} is:open`,
     limit,
     dateFrom,
-    dateTo
+    dateTo,
+    repository
   );
 
   // Team-based review requests
@@ -245,7 +253,7 @@ export async function listPullRequests(
   for (const team of teams) {
     const teamQuery = `team-review-requested:${team.organization.login}/${team.slug} is:open`;
     console.log(`Searching for team reviews: ${teamQuery}`);
-    const teamPRs = await searchPullRequests(accessToken, teamQuery, limit, dateFrom, dateTo);
+    const teamPRs = await searchPullRequests(accessToken, teamQuery, limit, dateFrom, dateTo, repository);
 
     // Merge team PRs, avoiding duplicates
     for (const pr of teamPRs) {
@@ -278,7 +286,8 @@ export async function listPullRequests(
     `involves:${myUsername} is:open`,
     limit,
     dateFrom,
-    dateTo
+    dateTo,
+    repository
   );
 
   console.log(`Found ${involvedPRs.length} involved PRs`);

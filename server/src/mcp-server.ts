@@ -196,6 +196,10 @@ The tool requires GitHub authentication - it will prompt to connect if needed.`,
             type: 'string',
             description: 'Optional: Filter PRs updated on or before this date (ISO format: YYYY-MM-DD).',
           },
+          repository: {
+            type: 'string',
+            description: 'Optional: Filter PRs by repository in "owner/repo" format (e.g., "facebook/react", "microsoft/vscode"). If not provided, searches across all accessible repositories.',
+          },
         },
         required: [],
         additionalProperties: false,
@@ -404,7 +408,7 @@ function handleCheckGitHubAuthStatus(userId: string): AppsToolResponse {
  * Handle list_pull_requests tool
  */
 async function handleListPullRequests(
-  args: { username?: string; limit?: number; date_from?: string; date_to?: string },
+  args: { username?: string; limit?: number; date_from?: string; date_to?: string; repository?: string },
   userId: string
 ): Promise<AppsToolResponse> {
   // Check authentication first
@@ -425,7 +429,7 @@ async function handleListPullRequests(
   }
 
   try {
-    const result = await listPullRequests(userId, args.username, args.limit, args.date_from, args.date_to);
+    const result = await listPullRequests(userId, args.username, args.limit, args.date_from, args.date_to, args.repository);
 
     // Build human-readable message based on search type
     let message: string;
@@ -724,7 +728,7 @@ export function createMCPServer(): Server {
 
       case 'list_pull_requests':
         return await handleListPullRequests(
-          args as { username?: string; limit?: number; date_from?: string; date_to?: string },
+          args as { username?: string; limit?: number; date_from?: string; date_to?: string; repository?: string },
           userId
         ) as unknown as CallToolResult;
 
@@ -896,7 +900,7 @@ export async function handleMCPRequest(
 
         case 'list_pull_requests':
           return await handleListPullRequests(
-            args as { username?: string; limit?: number; date_from?: string; date_to?: string },
+            args as { username?: string; limit?: number; date_from?: string; date_to?: string; repository?: string },
             toolUserId
           );
 

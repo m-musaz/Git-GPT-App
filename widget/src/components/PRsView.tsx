@@ -129,7 +129,7 @@ function PRCard({ pr, isDark, index, total, onOpenPR }: PRCardProps) {
 function getSearchTypeLabel(searchType: PRSearchType, searchedUser?: string): string {
   switch (searchType) {
     case 'authored':
-      return 'Your PRs';
+      return 'Authored PRs';
     case 'reviewing':
       return 'PRs to Review';
     case 'involved':
