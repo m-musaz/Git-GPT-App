@@ -186,7 +186,7 @@ The tool requires GitHub authentication - it will prompt to connect if needed.`,
           },
           limit: {
             type: 'number',
-            description: 'Optional: Maximum number of PRs to return. Defaults to 10 if not specified.',
+            description: 'Optional: Maximum number of PRs to return. Defaults to 10 if not specified. Maximum allowed is 10.',
           },
           date_from: {
             type: 'string',
@@ -276,7 +276,7 @@ The tool requires GitHub authentication - it will prompt to connect if needed.`,
     {
       name: 'post_review_comments',
       title: 'Post Review Comments',
-      description: `Post review comments to a GitHub pull request.
+      description: `Post review comments to a GitHub pull request. Returns a direct link to view the posted review.
 
 **IMPORTANT: Call this tool only ONCE per user request. Do NOT make multiple calls for the same review.**
 
@@ -290,6 +290,9 @@ This tool accepts an ARRAY of comments - put ALL comments (both inline and gener
 - COMMENT (default): Neutral feedback
 - APPROVE: Only if user explicitly says "approve" or "LGTM"
 - REQUEST_CHANGES: Only if user explicitly requests changes
+
+**Returns:**
+- A direct link to the posted review that users can click to view their comments on GitHub
 
 The tool requires GitHub authentication.`,
       inputSchema: {
@@ -654,12 +657,16 @@ async function handlePostReviewComments(
       summary += ` (${generalCount} general)`;
     }
 
+    const viewLink = result.reviewUrl || result.prUrl;
+    const linkText = result.reviewUrl ? 'View review' : 'View PR';
+    
     return {
-      content: [{ type: 'text', text: `${summary}\n\nView at: ${result.prUrl}` }],
+      content: [{ type: 'text', text: `${summary}\n\n${linkText}: ${viewLink}` }],
       structuredContent: {
         success: result.success,
         reviewId: result.reviewId,
         prUrl: result.prUrl,
+        reviewUrl: result.reviewUrl,
         commentsPosted: result.commentsPosted,
         message: result.message,
       },

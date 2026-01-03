@@ -141,6 +141,7 @@ export interface PostReviewResponse {
   success: boolean;
   reviewId?: number;
   prUrl: string;
+  reviewUrl?: string;  // Direct link to the review comment
   commentsPosted: number;
   message: string;
 }

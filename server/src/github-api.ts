@@ -13,6 +13,7 @@ import { getGitHubTokens } from "./token-store.js";
 
 const GITHUB_API_BASE = "https://api.github.com";
 const DEFAULT_MAX_RESULTS = 10;
+const MAX_LIMIT = 10; // Maximum allowed limit for PR searches
 
 // testingss
 
@@ -193,6 +194,9 @@ export async function listPullRequests(
     throw new Error("Not authenticated with GitHub");
   }
 
+  // Enforce maximum limit
+  const cappedLimit = Math.min(limit, MAX_LIMIT);
+
   const accessToken = storedData.tokens.access_token;
   const myUsername =
     storedData.user?.login || (await getAuthenticatedUserLogin(accessToken));
@@ -202,7 +206,7 @@ export async function listPullRequests(
     const prs = await searchPullRequests(
       accessToken,
       `author:${specifiedUser} is:open`,
-      limit,
+      cappedLimit,
       dateFrom,
       dateTo,
       repository
@@ -221,7 +225,7 @@ export async function listPullRequests(
     const authoredPRs = await searchPullRequests(
       accessToken,
       `author:${myUsername} is:open`,
-      limit,
+      cappedLimit,
       dateFrom,
       dateTo,
       repository
@@ -241,7 +245,7 @@ export async function listPullRequests(
     let reviewingPRs = await searchPullRequests(
       accessToken,
       `review-requested:${myUsername} is:open`,
-      limit,
+      cappedLimit,
       dateFrom,
       dateTo,
       repository
@@ -254,7 +258,7 @@ export async function listPullRequests(
     for (const team of teams) {
       const teamQuery = `team-review-requested:${team.organization.login}/${team.slug} is:open`;
       console.log(`Searching for team reviews: ${teamQuery}`);
-      const teamPRs = await searchPullRequests(accessToken, teamQuery, limit, dateFrom, dateTo, repository);
+      const teamPRs = await searchPullRequests(accessToken, teamQuery, cappedLimit, dateFrom, dateTo, repository);
 
       // Merge team PRs, avoiding duplicates
       for (const pr of teamPRs) {
@@ -269,7 +273,7 @@ export async function listPullRequests(
       (a, b) =>
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     );
-    reviewingPRs = reviewingPRs.slice(0, limit);
+    reviewingPRs = reviewingPRs.slice(0, cappedLimit);
 
     console.log(`Found ${reviewingPRs.length} PRs to review`);
     return {
@@ -284,7 +288,7 @@ export async function listPullRequests(
     const involvedPRs = await searchPullRequests(
       accessToken,
       `involves:${myUsername} is:open`,
-      limit,
+      cappedLimit,
       dateFrom,
       dateTo,
       repository
@@ -303,7 +307,7 @@ export async function listPullRequests(
   const authoredPRs = await searchPullRequests(
     accessToken,
     `author:${myUsername} is:open`,
-    limit,
+    cappedLimit,
     dateFrom,
     dateTo,
     repository
@@ -325,7 +329,7 @@ export async function listPullRequests(
   let reviewingPRs = await searchPullRequests(
     accessToken,
     `review-requested:${myUsername} is:open`,
-    limit,
+    cappedLimit,
     dateFrom,
     dateTo,
     repository
@@ -338,7 +342,7 @@ export async function listPullRequests(
   for (const team of teams) {
     const teamQuery = `team-review-requested:${team.organization.login}/${team.slug} is:open`;
     console.log(`Searching for team reviews: ${teamQuery}`);
-    const teamPRs = await searchPullRequests(accessToken, teamQuery, limit, dateFrom, dateTo, repository);
+    const teamPRs = await searchPullRequests(accessToken, teamQuery, cappedLimit, dateFrom, dateTo, repository);
 
     // Merge team PRs, avoiding duplicates
     for (const pr of teamPRs) {
@@ -353,7 +357,7 @@ export async function listPullRequests(
     (a, b) =>
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
-  reviewingPRs = reviewingPRs.slice(0, limit);
+  reviewingPRs = reviewingPRs.slice(0, cappedLimit);
 
   if (reviewingPRs.length > 0) {
     console.log(`Found ${reviewingPRs.length} PRs to review`);
@@ -369,7 +373,7 @@ export async function listPullRequests(
   const involvedPRs = await searchPullRequests(
     accessToken,
     `involves:${myUsername} is:open`,
-    limit,
+    cappedLimit,
     dateFrom,
     dateTo,
     repository
@@ -877,10 +881,12 @@ async function executePostReview(
         accessToken,
         `/repos/${owner}/${repo}/pulls/${prNumber}`
       );
+      const reviewUrl = `${prData.html_url}#pullrequestreview-${duplicateReview.id}`;
       return {
         success: true,
         reviewId: duplicateReview.id,
         prUrl: prData.html_url,
+        reviewUrl,
         commentsPosted: 0,
         message: `Review already exists on PR #${prNumber} (duplicate prevented)`,
       };
@@ -926,10 +932,16 @@ async function executePostReview(
     `/repos/${owner}/${repo}/pulls/${prNumber}`
   );
 
+  // Build direct review link if we have a review ID
+  const reviewUrl = reviewId 
+    ? `${prData.html_url}#pullrequestreview-${reviewId}`
+    : undefined;
+
   const response: PostReviewResponse = {
     success: true,
     reviewId,
     prUrl: prData.html_url,
+    reviewUrl,
     commentsPosted: comments.length,
     message: `Successfully posted ${comments.length} comment(s) to PR #${prNumber}`,
   };
