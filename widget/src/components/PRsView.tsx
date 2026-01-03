@@ -112,15 +112,12 @@ function PRCard({ pr, isDark, index, total, onOpenPR }: PRCardProps) {
 
       {/* Action Button */}
       <div className={`pt-3 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        <Button
-          className={`rounded-xl py-2 w-full ${theme.buttonBorder(isDark)} ${theme.buttonShadow()}`}
-          color="secondary"
-          size="sm"
-          block
+        <button
+          className={`rounded-xl py-2 w-full ${theme.textPrimary(isDark)} ${theme.buttonBorder(isDark)} ${theme.buttonShadow()}`}
           onClick={() => onOpenPR(pr.html_url)}
         >
           View on GitHub
-        </Button>
+        </button>
       </div>
     </div>
   );

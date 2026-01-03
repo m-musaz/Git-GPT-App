@@ -249,11 +249,7 @@ export default function PRContextView({ initialData, onBack }: PRContextViewProp
             )}
             <button
               onClick={() => openExternal(pr.htmlUrl)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                isDark
-                  ? 'bg-slate-700 hover:bg-slate-600 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${theme.textPrimary(isDark)} ${theme.buttonBorder(isDark)} ${theme.buttonShadow()}`}
             >
               View on GitHub
             </button>
