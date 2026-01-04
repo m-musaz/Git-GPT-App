@@ -168,6 +168,11 @@ function getTools(): AppsTool[] {
 
 **To see another user's PRs:** Provide their GitHub username (e.g., "Show me Inaam's PRs" → username: "Inaam")
 
+**Repository filtering:**
+- To filter TO a specific repo: Use "owner/repo" (e.g., repository: "facebook/react")
+- To EXCLUDE a specific repo: Use "-owner/repo" with minus prefix (e.g., repository: "-facebook/react")
+- If user says "outside of repo" or "other than repo", use the NEGATIVE prefix "-"
+
 **IMPORTANT - This tool ONLY lists PRs. It CANNOT:**
 - Show PR details, files changed, commits, or diffs
 - Filter by merged/closed state (only shows open PRs)
@@ -198,7 +203,7 @@ The tool requires GitHub authentication - it will prompt to connect if needed.`,
           },
           repository: {
             type: 'string',
-            description: 'Optional: Filter PRs by repository in "owner/repo" format (e.g., "facebook/react", "microsoft/vscode"). If not provided, searches across all accessible repositories.',
+            description: 'Optional: Filter PRs by repository. Use "owner/repo" to INCLUDE only that repo (e.g., "facebook/react"). Use "-owner/repo" to EXCLUDE that repo (e.g., "-facebook/react"). If not provided, searches across all accessible repositories. IMPORTANT: If user says "outside of" or "other than" a repo, use the negative prefix "-".',
           },
           filter_type: {
             type: 'string',

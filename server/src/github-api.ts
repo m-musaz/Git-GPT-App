@@ -70,8 +70,15 @@ async function searchPullRequests(
     fullQuery += ` updated:<=${dateTo}`;
   }
   
+  // Handle repository filter (supports negation with - prefix)
   if (repository) {
-    fullQuery += ` repo:${repository}`;
+    if (repository.startsWith('-')) {
+      // Exclude repository: -owner/repo
+      fullQuery += ` -repo:${repository.substring(1)}`;
+    } else {
+      // Include repository: owner/repo
+      fullQuery += ` repo:${repository}`;
+    }
   }
   
   const searchQuery = encodeURIComponent(`${fullQuery} type:pr`);
