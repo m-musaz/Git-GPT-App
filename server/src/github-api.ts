@@ -60,12 +60,16 @@ async function searchPullRequests(
 ): Promise<GitHubPullRequest[]> {
   // Add date filters to query if provided
   let fullQuery = query;
-  if (dateFrom) {
+  
+  // Use GitHub's date range syntax when both dates are provided
+  if (dateFrom && dateTo) {
+    fullQuery += ` updated:${dateFrom}..${dateTo}`;
+  } else if (dateFrom) {
     fullQuery += ` updated:>=${dateFrom}`;
-  }
-  if (dateTo) {
+  } else if (dateTo) {
     fullQuery += ` updated:<=${dateTo}`;
   }
+  
   if (repository) {
     fullQuery += ` repo:${repository}`;
   }
