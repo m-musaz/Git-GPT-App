@@ -177,7 +177,7 @@ export default function PRContextView({ initialData, onBack }: PRContextViewProp
   if (!prContext) {
     return (
       <div className={`p-6 rounded-xl border text-center ${theme.card(isDark)}`}>
-        <p className={theme.textSecondary(isDark)}>Fetching PR context...</p>
+        <p className={theme.textPrimary(isDark)}>Fetching PR context...</p>
       </div>
     );
   }

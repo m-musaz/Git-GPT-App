@@ -210,7 +210,6 @@ app.get(['/github/callback', '/auth/github/callback'], async (req: Request, res:
     <h1>${success ? 'GitHub Connected!' : 'Connection Failed'}</h1>
     ${username ? `<p class="username">@${username}</p>` : ''}
     <p>${message}</p>
-    <a href="https://chatgpt.com" class="btn">Return to ChatGPT</a>
     <p class="note">This tab will close automatically...</p>
   </div>
   <script>
